@@ -1,4 +1,4 @@
-const { saveSchedule, generateScheduleId, updateScheduleThreadTs } = require('./store');
+const { saveSchedule, generateScheduleId, updateScheduleThreadTs, saveChannelMentionTs } = require('./store');
 
 /**
  * 日程調整モーダル送信時のハンドラー
@@ -64,7 +64,7 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
         logger.info('========================================');
 
         // @channel メンション（スレッドとは分離して通知のみ）
-        await client.chat.postMessage({
+        const channelMentionMsg = await client.chat.postMessage({
             channel: channel,
             text: `<!channel> 日程調整は下記からお願いします🙏`,
         });
@@ -106,6 +106,11 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
         // スレッドのtsを保存
         if (result.ts) {
             updateScheduleThreadTs(scheduleId, result.ts);
+        }
+
+        // チャンネルメンション用メッセージのtsも保存（あとで削除するため）
+        if (channelMentionMsg.ts) {
+            saveChannelMentionTs(scheduleId, channelMentionMsg.ts);
         }
 
         // 元のボタンメッセージを更新（無効化）

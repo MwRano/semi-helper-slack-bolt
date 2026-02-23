@@ -148,6 +148,18 @@ const responseHandler = async ({ ack, body, view, client, logger }) => {
                         } catch (updateErr) {
                             logger.warn('親メッセージの更新（ボタン無効化）に失敗しました:', updateErr);
                         }
+
+                        // チャンネルメンション用メッセージを削除する
+                        if (schedule.channelMentionTs) {
+                            try {
+                                await client.chat.delete({
+                                    channel: schedule.channelId,
+                                    ts: schedule.channelMentionTs,
+                                });
+                            } catch (deleteErr) {
+                                logger.warn('チャンネルメンション用メッセージの削除に失敗しました:', deleteErr);
+                            }
+                        }
                     }
                 }
             } catch (err) {

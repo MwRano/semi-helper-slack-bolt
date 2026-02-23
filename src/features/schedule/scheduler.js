@@ -128,6 +128,18 @@ function startDeadlineChecker(app) {
                     app.logger.warn(`親メッセージの更新（ボタン無効化）に失敗しました: ${scheduleId}`, updateErr);
                 }
 
+                // チャンネルメンション用メッセージを削除する
+                if (schedule.channelMentionTs) {
+                    try {
+                        await app.client.chat.delete({
+                            channel: schedule.channelId,
+                            ts: schedule.channelMentionTs,
+                        });
+                    } catch (deleteErr) {
+                        app.logger.warn(`チャンネルメンション用メッセージの削除に失敗しました: ${scheduleId}`, deleteErr);
+                    }
+                }
+
                 app.logger.info('========================================');
                 app.logger.info(`📊 回答一覧を投稿しました: ${scheduleId}`);
                 app.logger.info(`  回答者数: ${Object.keys(schedule.responses).length}名`);
