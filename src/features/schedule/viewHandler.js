@@ -116,11 +116,13 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
                     ts: messageTs,
                     blocks: [
                         {
-                            type: 'section',
-                            text: {
-                                type: 'mrkdwn',
-                                text: `✅ <@${userId}> によって日程調整フォームが作成されました。`,
-                            },
+                            type: 'context',
+                            elements: [
+                                {
+                                    type: 'mrkdwn',
+                                    text: `✅ <@${userId}> によって日程調整フォームが作成されました。`,
+                                },
+                            ],
                         },
                     ],
                     text: '📅 日程調整が作成されました',
