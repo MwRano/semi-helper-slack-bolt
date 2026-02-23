@@ -1,6 +1,7 @@
 const { messageHandler } = require('./messageHandler');
 const { openModalAction, switchModeAction, clearTimeSlotsAction, openResponseModalAction } = require('./actionHandler');
 const { viewHandler } = require('./viewHandler');
+const { responseHandler } = require('./responseHandler');
 
 /**
  * 日程調整機能のリスナーを登録
@@ -24,6 +25,9 @@ function registerScheduleFeature(app) {
 
     // 日程入力ボタン → 回答用モーダルを表示
     app.action('open_response_modal', openResponseModalAction);
+
+    // 回答モーダル送信 → 回答を保存しチャンネルに通知
+    app.view('schedule_response_modal', responseHandler);
 }
 
 module.exports = { registerScheduleFeature };
