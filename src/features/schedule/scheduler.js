@@ -1,5 +1,6 @@
 const { getAllSchedules, markResultPosted, markRemindedHour } = require('./store');
 const { buildResultBlocks } = require('./resultViews');
+const { getBusySlots } = require('./googleCalendarService');
 
 const CHECK_INTERVAL_MS = 60 * 1000; // 1分ごとにチェック
 
@@ -66,7 +67,9 @@ function startDeadlineChecker(app) {
 
             // 締め切り到達 → 結果を投稿
             try {
-                const result = buildResultBlocks(scheduleId);
+                // Google Calendar からビジー情報を取得
+                const busySlots = await getBusySlots(schedule.startDate, schedule.endDate, schedule.timeSlots);
+                const result = buildResultBlocks(scheduleId, busySlots);
                 if (!result) continue;
 
                 await app.client.chat.postMessage({
