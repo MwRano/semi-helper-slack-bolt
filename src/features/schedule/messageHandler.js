@@ -2,7 +2,7 @@
  * 「日程調整」を含むメッセージを受信したときのハンドラー
  * → ボタン付きメッセージを返す（ボタンクリックでモーダルを開く）
  */
-const messageHandler = async ({ message, client, logger }) => {
+const messageHandler = async ({ message, say, logger }) => {
     try {
         logger.info('========================================');
         logger.info('📅 日程調整コマンドを受信しました');
@@ -10,9 +10,7 @@ const messageHandler = async ({ message, client, logger }) => {
         logger.info(`  チャンネル: ${message.channel}`);
         logger.info('========================================');
 
-        await client.chat.postEphemeral({
-            channel: message.channel,
-            user: message.user,
+        await say({
             blocks: [
                 {
                     type: 'section',
