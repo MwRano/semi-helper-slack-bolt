@@ -1,6 +1,8 @@
+const { saveSchedule, generateScheduleId } = require('./store');
+
 /**
  * 日程調整モーダル送信時のハンドラー
- * → 入力値を取得し、チャンネルに通知する
+ * → 入力値を保存し、チャンネルに通知する
  */
 const viewHandler = async ({ ack, body, view, client, logger }) => {
     await ack();
@@ -31,8 +33,20 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
             minute: '2-digit',
         });
 
+        // スケジュールデータを保存
+        const scheduleId = generateScheduleId();
+        saveSchedule(scheduleId, {
+            creatorId: userId,
+            channelId: channel,
+            startDate,
+            endDate,
+            deadline,
+            timeSlots,
+        });
+
         logger.info('========================================');
         logger.info('📅 日程調整が作成されました');
+        logger.info(`  スケジュールID: ${scheduleId}`);
         logger.info(`  作成者: ${userId}`);
         logger.info(`  調整期間: ${startDate} 〜 ${endDate}`);
         logger.info(`  締め切り: ${deadlineText}`);
@@ -93,6 +107,7 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
                             type: 'button',
                             text: { type: 'plain_text', text: '📝 日程を入力する' },
                             action_id: 'open_response_modal',
+                            value: scheduleId,
                             style: 'primary',
                         },
                     ],
