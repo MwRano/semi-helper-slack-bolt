@@ -1,5 +1,6 @@
 const { saveResponse, getSchedule, markResultPosted } = require('./store');
 const { buildResultBlocks } = require('./resultViews');
+const { getBusySlots } = require('./googleCalendar');
 
 /**
  * 回答モーダル送信時のハンドラー
@@ -89,7 +90,9 @@ const responseHandler = async ({ ack, body, view, client, logger }) => {
                 if (allResponded) {
                     logger.info(`🎉 チャンネルメンバー全員（${members.length}名）が回答しました。結果を投稿します。`);
 
-                    const result = buildResultBlocks(scheduleId);
+                    // Google Calendar からビジー情報を取得
+                    const busySlots = await getBusySlots(schedule.startDate, schedule.endDate, schedule.timeSlots);
+                    const result = buildResultBlocks(scheduleId, busySlots);
                     if (result) {
                         await client.chat.postMessage({
                             channel: schedule.channelId,

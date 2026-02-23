@@ -59,9 +59,10 @@ function pad(str, width) {
 /**
  * 回答一覧メッセージのブロックを生成
  * @param {string} scheduleId
+ * @param {Object} busySlots - ビジーなスロットのMap { "2026-03-02_1": true, ... }
  * @returns {Object|null} { blocks, text }
  */
-function buildResultBlocks(scheduleId) {
+function buildResultBlocks(scheduleId, busySlots = {}) {
     const schedule = getSchedule(scheduleId);
     if (!schedule) return null;
 
@@ -106,9 +107,11 @@ function buildResultBlocks(scheduleId) {
     });
     const memberColWidth = Math.max(4, ...memberNames.map((n) => charWidth(n) + 1));
 
-    // ヘッダー行: メンバー名
+    // ヘッダー行: メンバー名 + 先生列
+    const hasBusy = Object.keys(busySlots).length > 0;
+    const teacherColWidth = hasBusy ? 5 : 0;
     const memberHeaders = memberNames.map((name) => pad(name, memberColWidth)).join('');
-    const headerLine = pad('', dateColWidth) + memberHeaders + pad('◯', countColWidth);
+    const headerLine = pad('', dateColWidth) + memberHeaders + pad('◯', countColWidth) + (hasBusy ? pad('先生', teacherColWidth) : '');
 
     // データ行
     const dataLines = [];
@@ -118,7 +121,8 @@ function buildResultBlocks(scheduleId) {
 
         // 日付グループの区切り線（2日目以降）
         if (di > 0) {
-            dataLines.push('─'.repeat(Math.floor((dateColWidth + memberColWidth * memberCount + countColWidth) / 2)));
+            const lineWidth = dateColWidth + memberColWidth * memberCount + countColWidth + teacherColWidth;
+            dataLines.push('─'.repeat(Math.floor(lineWidth / 2)));
         }
 
         for (const slot of timeSlots) {
@@ -134,9 +138,11 @@ function buildResultBlocks(scheduleId) {
                 return pad(STATE_CHAR[state], memberColWidth);
             });
 
-            const isPerfect = availableCount === memberCount;
+            const isBusy = busySlots[slotKey] === true;
+            const isPerfect = availableCount === memberCount && !isBusy;
             const mark = isPerfect ? ' ✨' : '';
-            dataLines.push(pad(rowLabel, dateColWidth) + cells.join('') + pad(`${availableCount}`, countColWidth) + mark);
+            const teacherCell = hasBusy ? pad(isBusy ? '✕' : '○', teacherColWidth) : '';
+            dataLines.push(pad(rowLabel, dateColWidth) + cells.join('') + pad(`${availableCount}`, countColWidth) + teacherCell + mark);
         }
     }
 
@@ -161,6 +167,8 @@ function buildResultBlocks(scheduleId) {
             text: { type: 'mrkdwn', text: `*📝 備考*\n${notes.join('\n')}` },
         });
     }
+
+
 
     return {
         blocks,
