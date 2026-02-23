@@ -67,6 +67,18 @@ function markResultPosted(scheduleId) {
     }
 }
 
+/**
+ * チャンネルのメッセージタイムスタンプ(threadTs)を保存
+ * @param {string} id 
+ * @param {string} threadTs 
+ */
+function updateScheduleThreadTs(id, threadTs) {
+    const schedule = schedules.get(id);
+    if (schedule) {
+        schedule.threadTs = threadTs;
+    }
+}
+
 module.exports = {
     saveSchedule,
     getSchedule,
@@ -74,4 +86,5 @@ module.exports = {
     generateScheduleId,
     getAllSchedules,
     markResultPosted,
+    updateScheduleThreadTs,
 };

@@ -1,4 +1,4 @@
-const { saveSchedule, generateScheduleId } = require('./store');
+const { saveSchedule, generateScheduleId, updateScheduleThreadTs } = require('./store');
 
 /**
  * 日程調整モーダル送信時のハンドラー
@@ -54,7 +54,7 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
         logger.info('========================================');
 
         // チャンネルに通知
-        await client.chat.postMessage({
+        const result = await client.chat.postMessage({
             channel: channel,
             blocks: [
                 {
@@ -115,6 +115,11 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
             ],
             text: `📅 日程調整が作成されました（${startDate} 〜 ${endDate}）`,
         });
+
+        // スレッドのtsを保存
+        if (result.ts) {
+            updateScheduleThreadTs(scheduleId, result.ts);
+        }
     } catch (error) {
         logger.error('日程調整の通知に失敗しました:', error);
     }

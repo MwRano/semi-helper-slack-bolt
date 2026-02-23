@@ -27,6 +27,7 @@ function startDeadlineChecker(app) {
 
                 await app.client.chat.postMessage({
                     channel: schedule.channelId,
+                    thread_ts: schedule.threadTs,
                     blocks: result.blocks,
                     text: result.text,
                 });
