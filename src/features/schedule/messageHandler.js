@@ -16,7 +16,7 @@ const messageHandler = async ({ message, say, logger }) => {
                     type: 'section',
                     text: {
                         type: 'mrkdwn',
-                        text: `<@${message.user}> \n📅 日程調整を開始します。\n下のボタンをクリックして、詳細を設定してください。\n\n*デフォルト設定:*\n• 調整期間: 来週月曜〜金曜\n• 締め切り: 2日後\n• 時間枠: 限ベース（1〜4限）\n• リマインド: 24時間前 / 1時間前\n• 先生の予定: 考慮する`,
+                        text: `<@${message.user}> 下記のボタンを押して日程調整フォームを作成してください。`,
                     },
                 },
                 {
@@ -24,9 +24,18 @@ const messageHandler = async ({ message, say, logger }) => {
                     elements: [
                         {
                             type: 'button',
-                            text: { type: 'plain_text', text: '📅 日程調整を設定する' },
+                            text: { type: 'plain_text', text: '📅 日程調整フォーム作成' },
                             action_id: 'open_schedule_modal',
                             style: 'primary',
+                        },
+                    ],
+                },
+                {
+                    type: 'context',
+                    elements: [
+                        {
+                            type: 'mrkdwn',
+                            text: 'デフォルト: 来週月〜金 / 1〜4限 / 締切2日後 / リマインド24h・1h前 / 先生の予定考慮',
                         },
                     ],
                 },
