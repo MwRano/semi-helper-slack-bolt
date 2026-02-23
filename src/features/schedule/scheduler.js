@@ -1,4 +1,4 @@
-const { getAllSchedules, markResultPosted, markRemindedHour } = require('./store');
+const { getAllSchedules, markResultPosted, markRemindedHour, markOverdueRemindedDay } = require('./store');
 const { buildResultBlocks } = require('./resultViews');
 const { getBusySlots } = require('./googleCalendarService');
 
@@ -59,94 +59,48 @@ function startDeadlineChecker(app) {
                 }
             }
 
-            // ----- 2. 締め切り処理 -----
-            // 既に結果投稿済み or 締め切りまだ → スキップ
-            if (schedule.resultPosted || schedule.deadline > now) {
-                continue;
-            }
+            // ----- 2. 締め切り超過後の定期リマインド -----
+            if (now > schedule.deadline) {
+                const overdueDays = Math.floor((now - schedule.deadline) / (24 * 60 * 60));
+                if (overdueDays >= 0) {
+                    const overdueRemindedDays = schedule.overdueRemindedDays || [];
+                    if (!overdueRemindedDays.includes(overdueDays)) {
+                        try {
+                            const channelMembersRes = await app.client.conversations.members({
+                                channel: schedule.channelId,
+                            });
 
-            // 締め切り到達 → 結果を投稿
-            try {
-                // 先生の予定を考慮する場合のみ Google Calendar を呼び出す
-                const busySlots = schedule.includeTeacher !== false
-                    ? await getBusySlots(schedule.startDate, schedule.endDate, schedule.timeSlots)
-                    : {};
-                const result = buildResultBlocks(scheduleId, busySlots);
-                if (!result) continue;
+                            const botInfo = await app.client.auth.test();
+                            const botUserId = botInfo.user_id;
 
-                await app.client.chat.postMessage({
-                    channel: schedule.channelId,
-                    thread_ts: schedule.threadTs,
-                    blocks: result.blocks,
-                    text: result.text,
-                });
+                            const respondedUsers = Object.keys(schedule.responses);
+                            const unrespondedMembers = channelMembersRes.members.filter(
+                                (id) => id !== botUserId && !respondedUsers.includes(id)
+                            );
 
-                markResultPosted(scheduleId);
+                            if (unrespondedMembers.length > 0) {
+                                const mentions = unrespondedMembers.map((id) => `<@${id}>`).join(' ');
+                                const textMessage = overdueDays === 0
+                                    ? `⚠️ *未回答リマインド*\n${mentions}\n日程調整の締め切りを過ぎました。まだ回答されていない方はご回答をお願いします🙏`
+                                    : `⚠️ *未回答リマインド*\n${mentions}\n日程調整の締め切りを過ぎています（${overdueDays}日経過）。まだ回答されていない方はご回答をお願いします🙏`;
 
-                // スレッドの親メッセージ（フォーム）を更新してボタンを消す
-                try {
-                    const deadlineDate = new Date(schedule.deadline * 1000);
-                    const deadlineText = deadlineDate.toLocaleString('ja-JP', {
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                    });
+                                await app.client.chat.postMessage({
+                                    channel: schedule.channelId,
+                                    thread_ts: schedule.threadTs,
+                                    text: textMessage,
+                                });
+                                app.logger.info(`⚠️ 超過リマインドを送信しました: ${scheduleId} (${overdueDays}日経過, ${unrespondedMembers.length}名へ)`);
+                            }
 
-                    await app.client.chat.update({
-                        channel: schedule.channelId,
-                        ts: schedule.threadTs,
-                        blocks: [
-                            {
-                                type: 'header',
-                                text: {
-                                    type: 'plain_text',
-                                    text: '📅 日程調整',
-                                },
-                            },
-                            {
-                                type: 'section',
-                                text: {
-                                    type: 'mrkdwn',
-                                    text: `*作成者:* <@${schedule.creatorId}>　|　*締め切り:* ${deadlineText}`,
-                                },
-                            },
-                            {
-                                type: 'context',
-                                elements: [
-                                    {
-                                        type: 'mrkdwn',
-                                        text: '⚠️ 締め切りを過ぎたため、受付を終了しました。',
-                                    },
-                                ],
-                            },
-                        ],
-                        text: '📅 日程調整の受付が終了しました',
-                    });
-                } catch (updateErr) {
-                    app.logger.warn(`親メッセージの更新（ボタン無効化）に失敗しました: ${scheduleId}`, updateErr);
-                }
-
-                // チャンネルメンション用メッセージを削除する
-                if (schedule.channelMentionTs) {
-                    try {
-                        await app.client.chat.delete({
-                            channel: schedule.channelId,
-                            ts: schedule.channelMentionTs,
-                        });
-                    } catch (deleteErr) {
-                        app.logger.warn(`チャンネルメンション用メッセージの削除に失敗しました: ${scheduleId}`, deleteErr);
+                            // 未回答がいなくても経過日数フラグは立ててスキップする
+                            markOverdueRemindedDay(scheduleId, overdueDays);
+                        } catch (error) {
+                            app.logger.error(`超過リマインド処理に失敗しました (${scheduleId}):`, error);
+                        }
                     }
                 }
-
-                app.logger.info('========================================');
-                app.logger.info(`📊 回答一覧を投稿しました: ${scheduleId}`);
-                app.logger.info(`  回答者数: ${Object.keys(schedule.responses).length}名`);
-                app.logger.info('========================================');
-            } catch (error) {
-                app.logger.error(`回答一覧の投稿に失敗しました (${scheduleId}):`, error);
             }
+
         }
     }, CHECK_INTERVAL_MS);
 }
