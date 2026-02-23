@@ -1,23 +1,24 @@
 const { App } = require('@slack/bolt');
-
-require('dotenv').config();
+const { config } = require('./config');
+const { registerFeatures } = require('./features');
 
 const app = new App({
-    token: process.env.SLACK_BOT_TOKEN,
-    signingSecret: process.env.SLACK_SIGNING_SECRET,
+    token: config.slack.botToken,
+    signingSecret: config.slack.signingSecret,
     socketMode: true,
-    appToken: process.env.SLACK_APP_TOKEN,
-    port: process.env.PORT || 3000
+    appToken: config.slack.appToken,
+    port: config.port,
 });
 
-// 「日程調整」を含むメッセージを受信したときの処理
-app.message('日程調整', async ({ message, say, logger }) => {
-    logger.info('📅 日程調整コマンドを受信しました');
-    await say(`<@${message.user}> 📅 日程調整のリクエストを受け付けました！`);
-});
+// 全機能のリスナーを登録
+registerFeatures(app);
 
+// アプリ起動
 (async () => {
-    await app.start();
-
-    app.logger.info('⚡️ Bolt app is running!');
+    try {
+        await app.start();
+        app.logger.info('⚡️ Bolt app is running!');
+    } catch (error) {
+        app.logger.error('Failed to start the app', error);
+    }
 })();
