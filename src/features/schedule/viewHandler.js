@@ -86,6 +86,17 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
                         },
                     ],
                 },
+                {
+                    type: 'actions',
+                    elements: [
+                        {
+                            type: 'button',
+                            text: { type: 'plain_text', text: '📝 日程を入力する' },
+                            action_id: 'open_response_modal',
+                            style: 'primary',
+                        },
+                    ],
+                },
             ],
             text: `📅 日程調整が作成されました（${startDate} 〜 ${endDate}）`,
         });

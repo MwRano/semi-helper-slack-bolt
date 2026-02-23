@@ -21,6 +21,12 @@ function registerScheduleFeature(app) {
 
     // モーダル送信 → チャンネルに通知
     app.view('schedule_adjustment_modal', viewHandler);
+
+    // 日程入力ボタン → 回答用モーダルを表示（TODO: 実装予定）
+    app.action('open_response_modal', async ({ ack, logger }) => {
+        await ack();
+        logger.info('📝 日程入力ボタンがクリックされました（未実装）');
+    });
 }
 
 module.exports = { registerScheduleFeature };
