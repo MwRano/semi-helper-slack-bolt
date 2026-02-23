@@ -103,6 +103,51 @@ const responseHandler = async ({ ack, body, view, client, logger }) => {
                             text: result.text,
                         });
                         markResultPosted(scheduleId);
+
+                        // スレッドの親メッセージ（フォーム）を更新してボタンを消す
+                        try {
+                            const deadlineDate = new Date(schedule.deadline * 1000);
+                            const deadlineText = deadlineDate.toLocaleString('ja-JP', {
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                            });
+
+                            await client.chat.update({
+                                channel: schedule.channelId,
+                                ts: schedule.threadTs,
+                                blocks: [
+                                    {
+                                        type: 'header',
+                                        text: {
+                                            type: 'plain_text',
+                                            text: '📅 日程調整',
+                                        },
+                                    },
+                                    {
+                                        type: 'section',
+                                        text: {
+                                            type: 'mrkdwn',
+                                            text: `*作成者:* <@${schedule.creatorId}>　|　*締め切り:* ${deadlineText}`,
+                                        },
+                                    },
+                                    {
+                                        type: 'context',
+                                        elements: [
+                                            {
+                                                type: 'mrkdwn',
+                                                text: '✅ 全員の回答が完了したため、受付を終了しました。',
+                                            },
+                                        ],
+                                    },
+                                ],
+                                text: '📅 日程調整の受付が終了しました',
+                            });
+                        } catch (updateErr) {
+                            logger.warn('親メッセージの更新（ボタン無効化）に失敗しました:', updateErr);
+                        }
                     }
                 }
             } catch (err) {
