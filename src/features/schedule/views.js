@@ -114,12 +114,13 @@ function buildClearButtonBlock() {
  * @param {Object} currentValues - 現在の入力値（モーダル更新時に保持するため）
  * @param {number} renderCount - レンダーカウンター（block_id を変えて選択値をリセット）
  * @param {boolean} showDefaults - デフォルト値を表示するか
+ * @param {string} [messageTs] - モーダルを開いた際の元メッセージのタイムスタンプ
  */
-function buildScheduleModalView(channelId, mode = 'period', currentValues = {}, renderCount = 0, showDefaults = true) {
+function buildScheduleModalView(channelId, mode = 'period', currentValues = {}, renderCount = 0, showDefaults = true, messageTs = null) {
     return {
         type: 'modal',
         callback_id: 'schedule_adjustment_modal',
-        private_metadata: JSON.stringify({ channel: channelId, mode, renderCount }),
+        private_metadata: JSON.stringify({ channel: channelId, mode, renderCount, messageTs }),
         title: {
             type: 'plain_text',
             text: '📅 日程調整',

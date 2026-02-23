@@ -26,7 +26,7 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
         const includeTeacher = includeTeacherOptions.some(opt => opt.value === 'include_teacher');
 
         const userId = body.user.id;
-        const { channel } = JSON.parse(view.private_metadata);
+        const { channel, messageTs } = JSON.parse(view.private_metadata);
 
         // 時間枠を見やすい文字列に変換
         const timeSlotsText = timeSlots.map((opt) => opt.text.text).join('\n• ');
@@ -106,6 +106,28 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
         // スレッドのtsを保存
         if (result.ts) {
             updateScheduleThreadTs(scheduleId, result.ts);
+        }
+
+        // 元のボタンメッセージを更新（無効化）
+        if (messageTs) {
+            try {
+                await client.chat.update({
+                    channel: channel,
+                    ts: messageTs,
+                    blocks: [
+                        {
+                            type: 'section',
+                            text: {
+                                type: 'mrkdwn',
+                                text: `✅ <@${userId}> によって日程調整フォームが作成されました。`,
+                            },
+                        },
+                    ],
+                    text: '📅 日程調整が作成されました',
+                });
+            } catch (updateError) {
+                logger.warn('元のメッセージの更新に失敗しました:', updateError);
+            }
         }
     } catch (error) {
         logger.error('日程調整の通知に失敗しました:', error);

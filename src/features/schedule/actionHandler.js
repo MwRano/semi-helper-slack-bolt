@@ -9,10 +9,11 @@ const openModalAction = async ({ ack, body, client, logger }) => {
 
     try {
         const channelId = body.channel.id;
+        const messageTs = body.message?.ts;
 
         await client.views.open({
             trigger_id: body.trigger_id,
-            view: buildScheduleModalView(channelId),
+            view: buildScheduleModalView(channelId, 'period', {}, 0, true, messageTs),
         });
 
         logger.info('📅 日程調整モーダルを表示しました');
@@ -51,7 +52,7 @@ const switchModeAction = async ({ ack, body, client, logger }) => {
         await client.views.update({
             view_id: view.id,
             hash: view.hash,
-            view: buildScheduleModalView(metadata.channel, selectedMode, currentValues, newRenderCount, true),
+            view: buildScheduleModalView(metadata.channel, selectedMode, currentValues, newRenderCount, true, metadata.messageTs),
         });
 
         logger.info(`📅 時間枠モードを「${selectedMode}」に切り替えました`);
@@ -79,7 +80,7 @@ const clearTimeSlotsAction = async ({ ack, body, client, logger }) => {
         await client.views.update({
             view_id: view.id,
             hash: view.hash,
-            view: buildScheduleModalView(metadata.channel, currentMode, currentValues, newRenderCount, false),
+            view: buildScheduleModalView(metadata.channel, currentMode, currentValues, newRenderCount, false, metadata.messageTs),
         });
 
         logger.info('📅 時間枠をすべてクリアしました');
