@@ -16,7 +16,7 @@ const messageHandler = async ({ message, say, logger }) => {
                     type: 'section',
                     text: {
                         type: 'mrkdwn',
-                        text: `<@${message.user}> \n📅 日程調整を開始します。\n下のボタンをクリックして、詳細を設定してください。`,
+                        text: `<@${message.user}> \n📅 日程調整を開始します。\n下のボタンをクリックして、詳細を設定してください。\n\n*デフォルト設定:*\n• 調整期間: 来週月曜〜金曜\n• 締め切り: 2日後\n• 時間枠: 限ベース（1〜4限）\n• リマインド: 24時間前 / 1時間前\n• 先生の予定: 考慮する`,
                     },
                 },
                 {
