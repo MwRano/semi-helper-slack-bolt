@@ -1,6 +1,6 @@
 const { getAllSchedules, markResultPosted, markRemindedHour } = require('./store');
 const { buildResultBlocks } = require('./resultViews');
-const { getBusySlots } = require('./googleCalendar');
+const { getBusySlots } = require('./googleCalendarService');
 
 const CHECK_INTERVAL_MS = 60 * 1000; // 1分ごとにチェック
 

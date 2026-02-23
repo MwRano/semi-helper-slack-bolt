@@ -1,6 +1,6 @@
 const { saveResponse, getSchedule, markResultPosted } = require('./store');
 const { buildResultBlocks } = require('./resultViews');
-const { getBusySlots } = require('./googleCalendar');
+const { getBusySlots } = require('./googleCalendarService');
 
 /**
  * 回答モーダル送信時のハンドラー
