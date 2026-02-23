@@ -1,4 +1,5 @@
 const { buildScheduleModalView } = require('./views');
+const { buildResponseModalView } = require('./responseViews');
 
 /**
  * 「日程調整を設定する」ボタンクリック時のハンドラー
@@ -87,4 +88,31 @@ const clearTimeSlotsAction = async ({ ack, body, client, logger }) => {
     }
 };
 
-module.exports = { openModalAction, switchModeAction, clearTimeSlotsAction };
+/**
+ * 「日程を入力する」ボタンクリック時のハンドラー
+ * → 回答用モーダルを表示する
+ */
+const openResponseModalAction = async ({ ack, body, client, logger }) => {
+    await ack();
+
+    try {
+        const scheduleId = body.actions[0].value;
+        const view = buildResponseModalView(scheduleId);
+
+        if (!view) {
+            logger.error(`スケジュールが見つかりません: ${scheduleId}`);
+            return;
+        }
+
+        await client.views.open({
+            trigger_id: body.trigger_id,
+            view,
+        });
+
+        logger.info(`📝 回答用モーダルを表示しました (${scheduleId})`);
+    } catch (error) {
+        logger.error('回答用モーダルの表示に失敗しました:', error);
+    }
+};
+
+module.exports = { openModalAction, switchModeAction, clearTimeSlotsAction, openResponseModalAction };
