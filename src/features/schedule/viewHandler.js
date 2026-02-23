@@ -17,6 +17,10 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
         const timeSlotsBlockKey = Object.keys(values).find((k) => k.startsWith('time_slots_block_'));
         const timeSlots = values[timeSlotsBlockKey].time_slots.selected_options;
 
+        // リマインド時間を取得（設定されていない場合は空配列）
+        const remindHoursOptions = values.remind_hours_block?.remind_hours?.selected_options || [];
+        const remindHours = remindHoursOptions.map(opt => parseInt(opt.value, 10));
+
         const userId = body.user.id;
         const { channel } = JSON.parse(view.private_metadata);
 
@@ -42,6 +46,7 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
             endDate,
             deadline,
             timeSlots,
+            remindHours,
         });
 
         logger.info('========================================');

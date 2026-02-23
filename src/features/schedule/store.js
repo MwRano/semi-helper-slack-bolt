@@ -11,10 +11,12 @@ const schedules = new Map();
  */
 function saveSchedule(id, data) {
     schedules.set(id, {
+        remindHours: [24, 1], // 互換性のためデフォルトを設定
         ...data,
         createdAt: new Date().toISOString(),
         responses: {},
         resultPosted: false,
+        remindedHours: [],
     });
 }
 
@@ -68,6 +70,16 @@ function markResultPosted(scheduleId) {
 }
 
 /**
+ * 指定した時間のリマインド済みフラグをセット
+ */
+function markRemindedHour(scheduleId, hour) {
+    const schedule = schedules.get(scheduleId);
+    if (schedule && !schedule.remindedHours.includes(hour)) {
+        schedule.remindedHours.push(hour);
+    }
+}
+
+/**
  * チャンネルのメッセージタイムスタンプ(threadTs)を保存
  * @param {string} id 
  * @param {string} threadTs 
@@ -86,5 +98,6 @@ module.exports = {
     generateScheduleId,
     getAllSchedules,
     markResultPosted,
+    markRemindedHour,
     updateScheduleThreadTs,
 };
