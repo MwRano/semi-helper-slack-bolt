@@ -1,4 +1,5 @@
-const { saveResponse, getSchedule } = require('./store');
+const { saveResponse, getSchedule, markResultPosted } = require('./store');
+const { buildResultBlocks } = require('./resultViews');
 
 /**
  * 回答モーダル送信時のハンドラー
@@ -64,6 +65,45 @@ const responseHandler = async ({ ack, body, view, client, logger }) => {
             thread_ts: schedule.threadTs,
             text: `✅ <@${userId}> が日程を回答しました（🟢${counts.available} 🟡${counts.maybe} 🔴${counts.unavailable}）`,
         });
+
+        // 全員が回答したかチェック
+        if (!schedule.resultPosted) {
+            try {
+                // チャンネルのメンバーを取得
+                const channelMembersRes = await client.conversations.members({
+                    channel: schedule.channelId,
+                });
+                // botは除く必要があればここでフィルタリング等を行いますが、
+                // 一旦「チャンネルにいるユーザーのリスト」と「回答したユーザーのリスト」を比較
+
+                // botユーザー情報を取得（自分自身を除外するため）
+                const botInfo = await client.auth.test();
+                const botUserId = botInfo.user_id;
+
+                const members = channelMembersRes.members.filter(id => id !== botUserId);
+                const respondedUsers = Object.keys(schedule.responses);
+
+                // メンバーが全員回答済みかチェック
+                const allResponded = members.every(memberId => respondedUsers.includes(memberId));
+
+                if (allResponded) {
+                    logger.info(`🎉 チャンネルメンバー全員（${members.length}名）が回答しました。結果を投稿します。`);
+
+                    const result = buildResultBlocks(scheduleId);
+                    if (result) {
+                        await client.chat.postMessage({
+                            channel: schedule.channelId,
+                            thread_ts: schedule.threadTs,
+                            blocks: result.blocks,
+                            text: result.text,
+                        });
+                        markResultPosted(scheduleId);
+                    }
+                }
+            } catch (err) {
+                logger.error('全員回答のチェック中にエラーが発生しました:', err);
+            }
+        }
     } catch (error) {
         logger.error('回答の保存に失敗しました:', error);
     }
