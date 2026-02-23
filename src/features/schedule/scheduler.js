@@ -1,4 +1,4 @@
-const { getAllSchedules, markResultPosted, markRemindedHour } = require('./store');
+const { getAllSchedules, markResultPosted, markRemindedHour, markOverdueRemindedDay } = require('./store');
 const { buildResultBlocks } = require('./resultViews');
 const { getBusySlots } = require('./googleCalendarService');
 
@@ -59,7 +59,49 @@ function startDeadlineChecker(app) {
                 }
             }
 
-            // ----- 2. 締め切り処理 -----
+            // ----- 2. 締め切り超過後の定期リマインド -----
+            if (now > schedule.deadline) {
+                const overdueDays = Math.floor((now - schedule.deadline) / (24 * 60 * 60));
+                if (overdueDays >= 0) {
+                    const overdueRemindedDays = schedule.overdueRemindedDays || [];
+                    if (!overdueRemindedDays.includes(overdueDays)) {
+                        try {
+                            const channelMembersRes = await app.client.conversations.members({
+                                channel: schedule.channelId,
+                            });
+
+                            const botInfo = await app.client.auth.test();
+                            const botUserId = botInfo.user_id;
+
+                            const respondedUsers = Object.keys(schedule.responses);
+                            const unrespondedMembers = channelMembersRes.members.filter(
+                                (id) => id !== botUserId && !respondedUsers.includes(id)
+                            );
+
+                            if (unrespondedMembers.length > 0) {
+                                const mentions = unrespondedMembers.map((id) => `<@${id}>`).join(' ');
+                                const textMessage = overdueDays === 0
+                                    ? `⚠️ *未回答リマインド*\n${mentions}\n日程調整の締め切りを過ぎました。まだ回答されていない方はご回答をお願いします🙏`
+                                    : `⚠️ *未回答リマインド*\n${mentions}\n日程調整の締め切りを過ぎています（${overdueDays}日経過）。まだ回答されていない方はご回答をお願いします🙏`;
+
+                                await app.client.chat.postMessage({
+                                    channel: schedule.channelId,
+                                    thread_ts: schedule.threadTs,
+                                    text: textMessage,
+                                });
+                                app.logger.info(`⚠️ 超過リマインドを送信しました: ${scheduleId} (${overdueDays}日経過, ${unrespondedMembers.length}名へ)`);
+                            }
+
+                            // 未回答がいなくても経過日数フラグは立ててスキップする
+                            markOverdueRemindedDay(scheduleId, overdueDays);
+                        } catch (error) {
+                            app.logger.error(`超過リマインド処理に失敗しました (${scheduleId}):`, error);
+                        }
+                    }
+                }
+            }
+
+            // ----- 3. 締め切り処理 -----
             // 既に結果投稿済み or 締め切りまだ → スキップ
             if (schedule.resultPosted || schedule.deadline > now) {
                 continue;

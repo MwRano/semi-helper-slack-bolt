@@ -103,6 +103,23 @@ function saveChannelMentionTs(id, ts) {
     }
 }
 
+/**
+ * 締め切り超過後のリマインド済み日数をセット
+ * @param {string} scheduleId 
+ * @param {number} day 
+ */
+function markOverdueRemindedDay(scheduleId, day) {
+    const schedule = schedules.get(scheduleId);
+    if (schedule) {
+        if (!schedule.overdueRemindedDays) {
+            schedule.overdueRemindedDays = [];
+        }
+        if (!schedule.overdueRemindedDays.includes(day)) {
+            schedule.overdueRemindedDays.push(day);
+        }
+    }
+}
+
 module.exports = {
     saveSchedule,
     getSchedule,
@@ -113,4 +130,5 @@ module.exports = {
     markRemindedHour,
     updateScheduleThreadTs,
     saveChannelMentionTs,
+    markOverdueRemindedDay,
 };
