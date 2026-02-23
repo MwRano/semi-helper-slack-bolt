@@ -101,39 +101,6 @@ function startDeadlineChecker(app) {
                 }
             }
 
-            // ----- 3. 締め切り処理 -----
-            // 既に結果投稿済み or 締め切りまだ → スキップ
-            if (schedule.resultPosted || schedule.deadline > now) {
-                continue;
-            }
-
-            // 締め切り到達 → 結果を投稿
-            try {
-                // 先生の予定を考慮する場合のみ Google Calendar を呼び出す
-                const busySlots = schedule.includeTeacher !== false
-                    ? await getBusySlots(schedule.startDate, schedule.endDate, schedule.timeSlots)
-                    : {};
-                const result = buildResultBlocks(scheduleId, busySlots);
-                if (!result) continue;
-
-                await app.client.chat.postMessage({
-                    channel: schedule.channelId,
-                    thread_ts: schedule.threadTs,
-                    blocks: result.blocks,
-                    text: result.text,
-                });
-
-                markResultPosted(scheduleId);
-
-
-
-                app.logger.info('========================================');
-                app.logger.info(`📊 回答一覧を投稿しました: ${scheduleId}`);
-                app.logger.info(`  回答者数: ${Object.keys(schedule.responses).length}名`);
-                app.logger.info('========================================');
-            } catch (error) {
-                app.logger.error(`回答一覧の投稿に失敗しました (${scheduleId}):`, error);
-            }
         }
     }, CHECK_INTERVAL_MS);
 }
