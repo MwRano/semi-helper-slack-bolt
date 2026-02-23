@@ -178,7 +178,6 @@ function buildScheduleModalView(channelId, mode = 'period', currentValues = {}, 
                 label: { type: 'plain_text', text: '締め切り日時' },
             },
             { type: 'divider' },
-
             // ===== 時間枠 =====
             {
                 type: 'header',
@@ -187,6 +186,32 @@ function buildScheduleModalView(channelId, mode = 'period', currentValues = {}, 
             buildModeSelectBlock(mode),
             buildTimeSlotSelectBlock(mode, renderCount, showDefaults),
             buildClearButtonBlock(),
+            { type: 'divider' },
+
+            // ===== リマインド =====
+            {
+                type: 'input',
+                block_id: 'remind_hours_block',
+                optional: true,
+                element: {
+                    type: 'multi_static_select',
+                    action_id: 'remind_hours',
+                    placeholder: { type: 'plain_text', text: 'リマインドのタイミングを選択' },
+                    options: [
+                        { text: { type: 'plain_text', text: '48時間前' }, value: '48' },
+                        { text: { type: 'plain_text', text: '24時間前' }, value: '24' },
+                        { text: { type: 'plain_text', text: '12時間前' }, value: '12' },
+                        { text: { type: 'plain_text', text: '6時間前' }, value: '6' },
+                        { text: { type: 'plain_text', text: '3時間前' }, value: '3' },
+                        { text: { type: 'plain_text', text: '1時間前' }, value: '1' },
+                    ],
+                    initial_options: [
+                        { text: { type: 'plain_text', text: '24時間前' }, value: '24' },
+                        { text: { type: 'plain_text', text: '1時間前' }, value: '1' },
+                    ],
+                },
+                label: { type: 'plain_text', text: 'リマインド通知（複数選択可）' },
+            },
         ],
     };
 }
