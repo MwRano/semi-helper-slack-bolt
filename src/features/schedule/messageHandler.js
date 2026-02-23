@@ -11,6 +11,7 @@ const messageHandler = async ({ message, say, logger }) => {
         logger.info('========================================');
 
         await say({
+            thread_ts: message.ts,
             blocks: [
                 {
                     type: 'section',
