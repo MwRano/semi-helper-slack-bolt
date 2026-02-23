@@ -91,6 +91,18 @@ function updateScheduleThreadTs(id, threadTs) {
     }
 }
 
+/**
+ * チャンネルメンション用メッセージのタイムスタンプを保存
+ * @param {string} id 
+ * @param {string} ts 
+ */
+function saveChannelMentionTs(id, ts) {
+    const schedule = schedules.get(id);
+    if (schedule) {
+        schedule.channelMentionTs = ts;
+    }
+}
+
 module.exports = {
     saveSchedule,
     getSchedule,
@@ -100,4 +112,5 @@ module.exports = {
     markResultPosted,
     markRemindedHour,
     updateScheduleThreadTs,
+    saveChannelMentionTs,
 };
