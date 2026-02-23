@@ -2,7 +2,7 @@
  * 「日程調整」を含むメッセージを受信したときのハンドラー
  * → ボタン付きメッセージを返す（ボタンクリックでモーダルを開く）
  */
-const messageHandler = async ({ message, client, logger }) => {
+const messageHandler = async ({ message, say, logger }) => {
     try {
         logger.info('========================================');
         logger.info('📅 日程調整コマンドを受信しました');
@@ -10,15 +10,13 @@ const messageHandler = async ({ message, client, logger }) => {
         logger.info(`  チャンネル: ${message.channel}`);
         logger.info('========================================');
 
-        await client.chat.postEphemeral({
-            channel: message.channel,
-            user: message.user,
+        await say({
             blocks: [
                 {
                     type: 'section',
                     text: {
                         type: 'mrkdwn',
-                        text: `<@${message.user}> 📅 日程調整を開始します。\n下のボタンをクリックして、詳細を設定してください。`,
+                        text: `<@${message.user}> \n📅 日程調整を開始します。\n下のボタンをクリックして、詳細を設定してください。\n\n*デフォルト設定:*\n• 調整期間: 来週月曜〜金曜\n• 締め切り: 2日後\n• 時間枠: 限ベース（1〜4限）\n• リマインド: 24時間前 / 1時間前\n• 先生の予定: 考慮する`,
                     },
                 },
                 {

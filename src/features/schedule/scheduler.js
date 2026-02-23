@@ -67,8 +67,10 @@ function startDeadlineChecker(app) {
 
             // 締め切り到達 → 結果を投稿
             try {
-                // Google Calendar からビジー情報を取得
-                const busySlots = await getBusySlots(schedule.startDate, schedule.endDate, schedule.timeSlots);
+                // 先生の予定を考慮する場合のみ Google Calendar を呼び出す
+                const busySlots = schedule.includeTeacher !== false
+                    ? await getBusySlots(schedule.startDate, schedule.endDate, schedule.timeSlots)
+                    : {};
                 const result = buildResultBlocks(scheduleId, busySlots);
                 if (!result) continue;
 

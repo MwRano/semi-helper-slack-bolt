@@ -212,6 +212,31 @@ function buildScheduleModalView(channelId, mode = 'period', currentValues = {}, 
                 },
                 label: { type: 'plain_text', text: 'リマインド通知（複数選択可）' },
             },
+            { type: 'divider' },
+
+            // ===== 先生の予定 =====
+            {
+                type: 'input',
+                block_id: 'include_teacher_block',
+                optional: true,
+                element: {
+                    type: 'checkboxes',
+                    action_id: 'include_teacher',
+                    options: [
+                        {
+                            text: { type: 'plain_text', text: '予定を考慮（Google Calendar連携）' },
+                            value: 'include_teacher',
+                        },
+                    ],
+                    initial_options: [
+                        {
+                            text: { type: 'plain_text', text: '予定を考慮（Google Calendar連携）' },
+                            value: 'include_teacher',
+                        },
+                    ],
+                },
+                label: { type: 'plain_text', text: '🎓 先生の予定' },
+            },
         ],
     };
 }

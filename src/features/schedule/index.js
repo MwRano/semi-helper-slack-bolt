@@ -9,8 +9,8 @@ const { startDeadlineChecker } = require('./scheduler');
  * @param {import('@slack/bolt').App} app
  */
 function registerScheduleFeature(app) {
-    // 「日程調整」メッセージ → ボタン付きメッセージを返す
-    app.message('日程調整', messageHandler);
+    // 「ちょうせい」メッセージ → ボタン付きメッセージを返す
+    app.message('ちょうせい', messageHandler);
 
     // ボタンクリック → 作成モーダルを表示
     app.action('open_schedule_modal', openModalAction);
