@@ -6,9 +6,9 @@ const WEEKDAYS_JA = ['日', '月', '火', '水', '木', '金', '土'];
  * ◯ △ ✕ の選択肢
  */
 const AVAILABILITY_OPTIONS = [
-    { text: { type: 'plain_text', text: '🟢 ◯ 参加可能' }, value: 'available' },
-    { text: { type: 'plain_text', text: '🟡 △ 未定' }, value: 'maybe' },
-    { text: { type: 'plain_text', text: '🔴 ✕ 参加不可' }, value: 'unavailable' },
+    { text: { type: 'plain_text', text: '🟢 参加可能' }, value: 'available' },
+    { text: { type: 'plain_text', text: '🟡 未定' }, value: 'maybe' },
+    { text: { type: 'plain_text', text: '🔴 参加不可' }, value: 'unavailable' },
 ];
 
 /** デフォルト: ◯ 参加可能 */
