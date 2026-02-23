@@ -21,6 +21,10 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
         const remindHoursOptions = values.remind_hours_block?.remind_hours?.selected_options || [];
         const remindHours = remindHoursOptions.map(opt => parseInt(opt.value, 10));
 
+        // 先生の予定を考慮するか
+        const includeTeacherOptions = values.include_teacher_block?.include_teacher?.selected_options || [];
+        const includeTeacher = includeTeacherOptions.some(opt => opt.value === 'include_teacher');
+
         const userId = body.user.id;
         const { channel } = JSON.parse(view.private_metadata);
 
@@ -47,6 +51,7 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
             deadline,
             timeSlots,
             remindHours,
+            includeTeacher,
         });
 
         logger.info('========================================');
