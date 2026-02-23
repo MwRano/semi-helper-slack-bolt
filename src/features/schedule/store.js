@@ -13,7 +13,8 @@ function saveSchedule(id, data) {
     schedules.set(id, {
         ...data,
         createdAt: new Date().toISOString(),
-        responses: {},  // { userId: { slots: {...}, note: '' } }
+        responses: {},
+        resultPosted: false,
     });
 }
 
@@ -49,4 +50,28 @@ function generateScheduleId() {
     return `sch_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-module.exports = { saveSchedule, getSchedule, saveResponse, generateScheduleId };
+/**
+ * 全スケジュールを取得
+ */
+function getAllSchedules() {
+    return schedules;
+}
+
+/**
+ * 結果投稿済みフラグをセット
+ */
+function markResultPosted(scheduleId) {
+    const schedule = schedules.get(scheduleId);
+    if (schedule) {
+        schedule.resultPosted = true;
+    }
+}
+
+module.exports = {
+    saveSchedule,
+    getSchedule,
+    saveResponse,
+    generateScheduleId,
+    getAllSchedules,
+    markResultPosted,
+};
