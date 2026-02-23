@@ -16,7 +16,7 @@ const messageHandler = async ({ message, say, logger }) => {
                     type: 'section',
                     text: {
                         type: 'mrkdwn',
-                        text: `<@${message.user}> \n📅 日程調整を開始します。`,
+                        text: `<@${message.user}> 下記のボタンを押して日程調整フォームを作成してください。`,
                     },
                 },
                 {
@@ -24,7 +24,7 @@ const messageHandler = async ({ message, say, logger }) => {
                     elements: [
                         {
                             type: 'button',
-                            text: { type: 'plain_text', text: '📅 日程調整を設定する' },
+                            text: { type: 'plain_text', text: '📅 日程調整フォーム作成' },
                             action_id: 'open_schedule_modal',
                             style: 'primary',
                         },
