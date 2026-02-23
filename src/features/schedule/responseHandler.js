@@ -25,8 +25,22 @@ const responseHandler = async ({ ack, body, view, client, logger }) => {
         // 備考を取得
         const note = values.response_note_block?.response_note?.value || '';
 
+        // 表示名を取得
+        let displayName = userId;
+        try {
+            const userInfo = await client.users.info({ user: userId });
+            displayName =
+                userInfo.user.profile.display_name ||
+                userInfo.user.real_name ||
+                userInfo.user.name;
+        } catch (e) {
+            logger.warn(`ユーザー情報の取得に失敗しました(users:read権限が不足している可能性があります): ${e.message}`);
+            // フォールバック: body.user.name があれば使用、なければ ID そのまま
+            displayName = body.user.name || userId;
+        }
+
         // 保存
-        saveResponse(scheduleId, userId, { slots, note });
+        saveResponse(scheduleId, userId, { slots, note, displayName });
 
         const schedule = getSchedule(scheduleId);
 

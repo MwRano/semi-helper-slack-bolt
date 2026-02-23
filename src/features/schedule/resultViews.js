@@ -2,11 +2,7 @@ const { getSchedule } = require('./store');
 
 const WEEKDAYS_JA = ['日', '月', '火', '水', '木', '金', '土'];
 
-const STATE_EMOJI = {
-    available: '🟢',
-    maybe: '🟡',
-    unavailable: '🔴',
-};
+const STATE_CHAR = { available: '◯', maybe: '△', unavailable: '✕' };
 
 /**
  * 開始日〜終了日の平日リストを生成
@@ -42,6 +38,25 @@ function getShortLabel(slotText) {
 }
 
 /**
+ * 半角換算の文字幅を計算
+ */
+function charWidth(str) {
+    let w = 0;
+    for (const ch of str) {
+        w += ch.charCodeAt(0) > 0x7f ? 2 : 1;
+    }
+    return w;
+}
+
+/**
+ * 半角換算で右パディング
+ */
+function pad(str, width) {
+    const diff = Math.max(0, width - charWidth(str));
+    return str + ' '.repeat(diff);
+}
+
+/**
  * 回答一覧メッセージのブロックを生成
  * @param {string} scheduleId
  * @returns {Object|null} { blocks, text }
@@ -55,7 +70,7 @@ function buildResultBlocks(scheduleId) {
     const userIds = Object.keys(responses);
     const blocks = [];
 
-    // ヘッダー
+    // ===== ヘッダー =====
     blocks.push({
         type: 'header',
         text: { type: 'plain_text', text: '📊 回答一覧' },
@@ -64,10 +79,9 @@ function buildResultBlocks(scheduleId) {
         type: 'section',
         text: {
             type: 'mrkdwn',
-            text: `*期間:* ${startDate} 〜 ${endDate}\n*回答者:* ${userIds.length}名`,
+            text: `*期間:* ${startDate} 〜 ${endDate}\n*回答者:* ${userIds.map((uid) => `<@${uid}>`).join(', ')}（${userIds.length}名）`,
         },
     });
-    blocks.push({ type: 'divider' });
 
     if (userIds.length === 0) {
         blocks.push({
@@ -77,55 +91,66 @@ function buildResultBlocks(scheduleId) {
         return { blocks, text: '📊 回答一覧（回答なし）' };
     }
 
-    // 全員◯の枠を収集
-    const perfectSlots = [];
+    blocks.push({ type: 'divider' });
 
-    // 日付ごとにセクションを生成
-    for (const day of weekdays) {
-        const lines = [];
+    // ===== 調整さん風テーブル =====
+    const memberCount = userIds.length;
+    const dateColWidth = 12;
+    const countColWidth = 4;
+
+    // メンバー名を取得し、列幅を決定
+    const memberNames = userIds.map((uid) => {
+        const name = responses[uid]?.displayName || uid;
+        // 長すぎる名前は切り詰め
+        return charWidth(name) > 8 ? name.substring(0, 4) : name;
+    });
+    const memberColWidth = Math.max(4, ...memberNames.map((n) => charWidth(n) + 1));
+
+    // ヘッダー行: メンバー名
+    const memberHeaders = memberNames.map((name) => pad(name, memberColWidth)).join('');
+    const headerLine = pad('', dateColWidth) + memberHeaders + pad('◯', countColWidth);
+
+    // データ行
+    const dataLines = [];
+
+    for (let di = 0; di < weekdays.length; di++) {
+        const day = weekdays[di];
+
+        // 日付グループの区切り線（2日目以降）
+        if (di > 0) {
+            dataLines.push('─'.repeat(Math.floor((dateColWidth + memberColWidth * memberCount + countColWidth) / 2)));
+        }
 
         for (const slot of timeSlots) {
             const slotKey = `${day.dateStr}_${slot.value}`;
             const shortLabel = getShortLabel(slot.text.text);
+            const rowLabel = `${day.label} ${shortLabel}`;
 
-            // 各ユーザーの状態を取得
-            const memberStatuses = userIds.map((uid) => {
+            // 各メンバーの状態
+            let availableCount = 0;
+            const cells = userIds.map((uid) => {
                 const state = responses[uid]?.slots?.[slotKey] || 'unavailable';
-                return { uid, state };
+                if (state === 'available') availableCount++;
+                return pad(STATE_CHAR[state], memberColWidth);
             });
 
-            // カウント
-            const counts = { available: 0, maybe: 0, unavailable: 0 };
-            memberStatuses.forEach((ms) => counts[ms.state]++);
-
-            // 全員◯チェック
-            const allAvailable = counts.available === userIds.length;
-            if (allAvailable) {
-                perfectSlots.push(`${day.label} ${shortLabel}`);
-            }
-
-            // メンバー表示
-            const memberText = memberStatuses
-                .map((ms) => `${STATE_EMOJI[ms.state]}<@${ms.uid}>`)
-                .join('  ');
-
-            const countText = `(◯${counts.available} △${counts.maybe} ✕${counts.unavailable})`;
-            const highlight = allAvailable ? ' ✨' : '';
-
-            lines.push(`*${shortLabel}:* ${memberText}  ${countText}${highlight}`);
+            const isPerfect = availableCount === memberCount;
+            const mark = isPerfect ? ' ✨' : '';
+            dataLines.push(pad(rowLabel, dateColWidth) + cells.join('') + pad(`${availableCount}`, countColWidth) + mark);
         }
-
-        blocks.push({
-            type: 'section',
-            text: {
-                type: 'mrkdwn',
-                text: `*📅 ${day.label}*\n${lines.join('\n')}`,
-            },
-        });
-        blocks.push({ type: 'divider' });
     }
 
-    // 備考があれば表示
+    const tableText = [headerLine, '', ...dataLines].join('\n');
+
+    blocks.push({
+        type: 'section',
+        text: {
+            type: 'mrkdwn',
+            text: '```\n' + tableText + '\n```',
+        },
+    });
+
+    // ===== 備考 =====
     const notes = userIds
         .filter((uid) => responses[uid]?.note)
         .map((uid) => `<@${uid}>: ${responses[uid].note}`);
@@ -133,30 +158,7 @@ function buildResultBlocks(scheduleId) {
     if (notes.length > 0) {
         blocks.push({
             type: 'section',
-            text: {
-                type: 'mrkdwn',
-                text: `*📝 備考*\n${notes.join('\n')}`,
-            },
-        });
-        blocks.push({ type: 'divider' });
-    }
-
-    // 全員◯の枠をハイライト
-    if (perfectSlots.length > 0) {
-        blocks.push({
-            type: 'section',
-            text: {
-                type: 'mrkdwn',
-                text: `*✨ 全員参加可能な枠:*\n${perfectSlots.map((s) => `• ${s}`).join('\n')}`,
-            },
-        });
-    } else {
-        blocks.push({
-            type: 'section',
-            text: {
-                type: 'mrkdwn',
-                text: '⚠️ 全員が参加可能な枠はありませんでした。',
-            },
+            text: { type: 'mrkdwn', text: `*📝 備考*\n${notes.join('\n')}` },
         });
     }
 
