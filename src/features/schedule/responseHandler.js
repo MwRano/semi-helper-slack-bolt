@@ -90,8 +90,10 @@ const responseHandler = async ({ ack, body, view, client, logger }) => {
                 if (allResponded) {
                     logger.info(`🎉 チャンネルメンバー全員（${members.length}名）が回答しました。結果を投稿します。`);
 
-                    // Google Calendar からビジー情報を取得
-                    const busySlots = await getBusySlots(schedule.startDate, schedule.endDate, schedule.timeSlots);
+                    // 先生の予定を考慮する場合のみ Google Calendar を呼び出す
+                    const busySlots = schedule.includeTeacher !== false
+                        ? await getBusySlots(schedule.startDate, schedule.endDate, schedule.timeSlots)
+                        : {};
                     const result = buildResultBlocks(scheduleId, busySlots);
                     if (result) {
                         await client.chat.postMessage({
