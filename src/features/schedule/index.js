@@ -2,6 +2,7 @@ const { messageHandler } = require('./messageHandler');
 const { openModalAction, switchModeAction, clearTimeSlotsAction, openResponseModalAction } = require('./actionHandler');
 const { viewHandler } = require('./viewHandler');
 const { responseHandler } = require('./responseHandler');
+const { startDeadlineChecker } = require('./scheduler');
 
 /**
  * 日程調整機能のリスナーを登録
@@ -28,6 +29,9 @@ function registerScheduleFeature(app) {
 
     // 回答モーダル送信 → 回答を保存しチャンネルに通知
     app.view('schedule_response_modal', responseHandler);
+
+    // 締め切りチェッカーを開始
+    startDeadlineChecker(app);
 }
 
 module.exports = { registerScheduleFeature };
