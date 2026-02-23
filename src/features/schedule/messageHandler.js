@@ -18,7 +18,7 @@ const messageHandler = async ({ message, client, logger }) => {
                     type: 'section',
                     text: {
                         type: 'mrkdwn',
-                        text: `<@${message.user}> 📅 日程調整を開始します。\n下のボタンをクリックして、詳細を設定してください。`,
+                        text: `<@${message.user}> \n📅 日程調整を開始します。\n下のボタンをクリックして、詳細を設定してください。`,
                     },
                 },
                 {
