@@ -80,7 +80,7 @@ function buildResultBlocks(scheduleId, busySlots = {}) {
         type: 'section',
         text: {
             type: 'mrkdwn',
-            text: `*期間:* ${startDate} 〜 ${endDate}\n*回答者:* ${userIds.map((uid) => `<@${uid}>`).join(', ')}（${userIds.length}名）`,
+            text: `*期間:* ${startDate} 〜 ${endDate}\n*回答者:* ${userIds.map((uid) => responses[uid]?.displayName || uid).join(', ')}（${userIds.length}名）`,
         },
     });
 
@@ -159,7 +159,7 @@ function buildResultBlocks(scheduleId, busySlots = {}) {
     // ===== 備考 =====
     const notes = userIds
         .filter((uid) => responses[uid]?.note)
-        .map((uid) => `<@${uid}>: ${responses[uid].note}`);
+        .map((uid) => `*${responses[uid]?.displayName || uid}*: ${responses[uid].note}`);
 
     if (notes.length > 0) {
         blocks.push({
