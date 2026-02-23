@@ -64,7 +64,7 @@ const responseHandler = async ({ ack, body, view, client, logger }) => {
         await client.chat.postMessage({
             channel: schedule.channelId,
             thread_ts: schedule.threadTs,
-            text: `✅ <@${userId}> が日程を回答しました（🟢${counts.available} 🟡${counts.maybe} 🔴${counts.unavailable}）`,
+            text: `✅ *${displayName}* が日程を回答しました（🟢${counts.available} 🟡${counts.maybe} 🔴${counts.unavailable}）`,
         });
 
         // 全員が回答したかチェック

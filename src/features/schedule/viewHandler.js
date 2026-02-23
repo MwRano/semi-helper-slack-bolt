@@ -63,7 +63,13 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
         logger.info(`  時間枠: ${timeSlots.map((o) => o.text.text).join(', ')}`);
         logger.info('========================================');
 
-        // チャンネルに通知
+        // @channel メンション（スレッドとは分離して通知のみ）
+        await client.chat.postMessage({
+            channel: channel,
+            text: `<!channel> 日程調整は下記からお願いします🙏`,
+        });
+
+        // チャンネルにスレッド親メッセージを投稿
         const result = await client.chat.postMessage({
             channel: channel,
             blocks: [
@@ -71,44 +77,15 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
                     type: 'header',
                     text: {
                         type: 'plain_text',
-                        text: '📅 日程調整が作成されました',
+                        text: '📅 日程調整',
                     },
                 },
                 {
                     type: 'section',
-                    fields: [
-                        {
-                            type: 'mrkdwn',
-                            text: `*作成者:*\n<@${userId}>`,
-                        },
-                        {
-                            type: 'mrkdwn',
-                            text: `*調整期間:*\n${startDate} 〜 ${endDate}`,
-                        },
-                    ],
-                },
-                {
-                    type: 'section',
-                    fields: [
-                        {
-                            type: 'mrkdwn',
-                            text: `*回答締め切り:*\n${deadlineText}`,
-                        },
-                        {
-                            type: 'mrkdwn',
-                            text: `*候補時間帯:*\n• ${timeSlotsText}`,
-                        },
-                    ],
-                },
-                { type: 'divider' },
-                {
-                    type: 'context',
-                    elements: [
-                        {
-                            type: 'mrkdwn',
-                            text: '📝 上記の時間帯で都合の良い日程を回答してください。',
-                        },
-                    ],
+                    text: {
+                        type: 'mrkdwn',
+                        text: `*作成者:* <@${userId}>　|　*締め切り:* ${deadlineText}`,
+                    },
                 },
                 {
                     type: 'actions',
