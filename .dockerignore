@@ -1,0 +1,9 @@
+node_modules
+.env
+.git
+.github
+Dockerfile
+docker-compose.yml
+.DS_Store
+Thumbs.db
+google-credentials.json

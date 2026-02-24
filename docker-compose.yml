@@ -1,0 +1,15 @@
+services:
+  slack-bot:
+    build: .
+    container_name: bolt-schedule-app
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - TZ=Asia/Tokyo
+    volumes:
+      - ./google-credentials.json:/app/google-credentials.json:ro
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
