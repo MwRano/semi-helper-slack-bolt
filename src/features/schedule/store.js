@@ -120,6 +120,31 @@ function markOverdueRemindedDay(scheduleId, day) {
     }
 }
 
+/**
+ * リマインドメッセージのタイムスタンプを保存（あとで削除するため）
+ */
+function addRemindMessage(scheduleId, userId, channel, ts) {
+    const schedule = schedules.get(scheduleId);
+    if (schedule) {
+        if (!schedule.remindMessages) schedule.remindMessages = {};
+        if (!schedule.remindMessages[userId]) schedule.remindMessages[userId] = [];
+        schedule.remindMessages[userId].push({ channel, ts });
+    }
+}
+
+/**
+ * 送信済みのリマインドメッセージ一覧を取得し、リストからクリアする
+ */
+function popRemindMessages(scheduleId, userId) {
+    const schedule = schedules.get(scheduleId);
+    if (schedule && schedule.remindMessages && schedule.remindMessages[userId]) {
+        const msgs = schedule.remindMessages[userId];
+        delete schedule.remindMessages[userId];
+        return msgs;
+    }
+    return [];
+}
+
 module.exports = {
     saveSchedule,
     getSchedule,
@@ -131,4 +156,6 @@ module.exports = {
     updateScheduleThreadTs,
     saveChannelMentionTs,
     markOverdueRemindedDay,
+    addRemindMessage,
+    popRemindMessages,
 };

@@ -1,4 +1,4 @@
-const { getAllSchedules, markResultPosted, markRemindedHour, markOverdueRemindedDay } = require('./store');
+const { getAllSchedules, markResultPosted, markRemindedHour, markOverdueRemindedDay, addRemindMessage } = require('./store');
 const { buildResultBlocks } = require('./resultViews');
 const { getBusySlots } = require('./googleCalendarService');
 
@@ -48,11 +48,11 @@ function startDeadlineChecker(app) {
                                 const permalink = permalinkRes.permalink;
 
                                 for (const userId of unrespondedMembers) {
-                                    await app.client.chat.postEphemeral({
-                                        channel: schedule.channelId,
-                                        user: userId,
+                                    const res = await app.client.chat.postMessage({
+                                        channel: userId,
                                         text: `🔔 *リマインド*\n<@${userId}>\n締め切りまで残り約${hour}時間となりました。\n<${permalink}|こちらのメッセージ>から日程のご回答をお願いします！`,
                                     });
+                                    addRemindMessage(scheduleId, userId, res.channel, res.ts);
                                 }
                                 app.logger.info(`🔔 リマインドを送信しました: ${scheduleId} (${hour}時間前, ${unrespondedMembers.length}名へ)`);
                             }
@@ -97,11 +97,11 @@ function startDeadlineChecker(app) {
                                         ? `⚠️ *未回答リマインド*\n<@${userId}>\n日程調整の締め切りを過ぎました。\n<${permalink}|こちらのメッセージ>から日程のご回答をお願いします🙏`
                                         : `⚠️ *未回答リマインド*\n<@${userId}>\n日程調整の締め切りを過ぎています（${overdueDays}日経過）。\n<${permalink}|こちらのメッセージ>から日程のご回答をお願いします🙏`;
 
-                                    await app.client.chat.postEphemeral({
-                                        channel: schedule.channelId,
-                                        user: userId,
+                                    const res = await app.client.chat.postMessage({
+                                        channel: userId,
                                         text: textMessage,
                                     });
+                                    addRemindMessage(scheduleId, userId, res.channel, res.ts);
                                 }
                                 app.logger.info(`⚠️ 超過リマインドを送信しました: ${scheduleId} (${overdueDays}日経過, ${unrespondedMembers.length}名へ)`);
                             }
