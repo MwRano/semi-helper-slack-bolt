@@ -54,28 +54,6 @@ const responseHandler = async ({ ack, body, view, client, logger }) => {
             }
         }
 
-        // --- 仮：ダミーデータを6人分追加 ---
-        const dummyNames = ['田中 一郎', '鈴木 次郎', '佐藤 三郎', '高橋 四郎', '伊藤 五郎', '渡辺 六郎'];
-        dummyNames.forEach((name, index) => {
-            const dummyId = `dummy_user_${index}`;
-            const dummySlots = {};
-            const states = ['available', 'maybe', 'unavailable'];
-
-            // 操作ユーザーと同じ時間枠キーを使ってテキトーに回答を埋める
-            for (const slotKey of Object.keys(slots)) {
-                // ランダムに選ぶ
-                const randomState = states[Math.floor(Math.random() * states.length)];
-                dummySlots[slotKey] = randomState;
-            }
-
-            saveResponse(scheduleId, dummyId, {
-                slots: dummySlots,
-                note: `ダミーユーザー${index}の備考です。`,
-                displayName: name
-            });
-        });
-        // ---------------------------------
-
         const schedule = getSchedule(scheduleId);
 
         // ◯ △ ✕ のカウント
