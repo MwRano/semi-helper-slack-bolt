@@ -41,11 +41,16 @@ function startDeadlineChecker(app) {
                             );
 
                             if (unrespondedMembers.length > 0) {
+                                const permalinkRes = await app.client.chat.getPermalink({
+                                    channel: schedule.channelId,
+                                    message_ts: schedule.threadTs
+                                });
+                                const permalink = permalinkRes.permalink;
+
                                 const mentions = unrespondedMembers.map((id) => `<@${id}>`).join(' ');
                                 await app.client.chat.postMessage({
                                     channel: schedule.channelId,
-                                    thread_ts: schedule.threadTs,
-                                    text: `🔔 *リマインド*\n${mentions}\n締め切りまで残り約${hour}時間となりました。まだ回答されていない方はご回答をお願いします！`,
+                                    text: `🔔 *リマインド*\n${mentions}\n締め切りまで残り約${hour}時間となりました。\n<${permalink}|こちらのメッセージ>から日程のご回答をお願いします！`,
                                 });
                                 app.logger.info(`🔔 リマインドを送信しました: ${scheduleId} (${hour}時間前, ${unrespondedMembers.length}名へ)`);
                             }
@@ -79,14 +84,19 @@ function startDeadlineChecker(app) {
                             );
 
                             if (unrespondedMembers.length > 0) {
+                                const permalinkRes = await app.client.chat.getPermalink({
+                                    channel: schedule.channelId,
+                                    message_ts: schedule.threadTs
+                                });
+                                const permalink = permalinkRes.permalink;
+
                                 const mentions = unrespondedMembers.map((id) => `<@${id}>`).join(' ');
                                 const textMessage = overdueDays === 0
-                                    ? `⚠️ *未回答リマインド*\n${mentions}\n日程調整の締め切りを過ぎました。まだ回答されていない方はご回答をお願いします🙏`
-                                    : `⚠️ *未回答リマインド*\n${mentions}\n日程調整の締め切りを過ぎています（${overdueDays}日経過）。まだ回答されていない方はご回答をお願いします🙏`;
+                                    ? `⚠️ *未回答リマインド*\n${mentions}\n日程調整の締め切りを過ぎました。\n<${permalink}|こちらのメッセージ>から日程のご回答をお願いします🙏`
+                                    : `⚠️ *未回答リマインド*\n${mentions}\n日程調整の締め切りを過ぎています（${overdueDays}日経過）。\n<${permalink}|こちらのメッセージ>から日程のご回答をお願いします🙏`;
 
                                 await app.client.chat.postMessage({
                                     channel: schedule.channelId,
-                                    thread_ts: schedule.threadTs,
                                     text: textMessage,
                                 });
                                 app.logger.info(`⚠️ 超過リマインドを送信しました: ${scheduleId} (${overdueDays}日経過, ${unrespondedMembers.length}名へ)`);
