@@ -1,5 +1,5 @@
 const { messageHandler } = require('./messageHandler');
-const { openModalAction, switchModeAction, clearTimeSlotsAction, openResponseModalAction } = require('./actionHandler');
+const { openModalAction, switchModeAction, clearTimeSlotsAction, openResponseModalAction, openResultModalAction } = require('./actionHandler');
 const { viewHandler } = require('./viewHandler');
 const { responseHandler } = require('./responseHandler');
 const { startDeadlineChecker } = require('./scheduler');
@@ -26,6 +26,9 @@ function registerScheduleFeature(app) {
 
     // 日程入力ボタン → 回答用モーダルを表示
     app.action('open_response_modal', openResponseModalAction);
+
+    // 回答一覧ボタン → 結果用モーダルを表示
+    app.action('open_result_modal', openResultModalAction);
 
     // 回答モーダル送信 → 回答を保存しチャンネルに通知
     app.view('schedule_response_modal', responseHandler);

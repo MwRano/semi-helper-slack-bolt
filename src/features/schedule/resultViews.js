@@ -57,12 +57,12 @@ function pad(str, width) {
 }
 
 /**
- * 回答一覧メッセージのブロックを生成
+ * 回答一覧モーダルのViewを生成
  * @param {string} scheduleId
  * @param {Object} busySlots - ビジーなスロットのMap { "2026-03-02_1": true, ... }
- * @returns {Object|null} { blocks, text }
+ * @returns {Object|null} Modal View object
  */
-function buildResultBlocks(scheduleId, busySlots = {}) {
+function buildResultModalView(scheduleId, busySlots = {}) {
     const schedule = getSchedule(scheduleId);
     if (!schedule) return null;
 
@@ -89,7 +89,12 @@ function buildResultBlocks(scheduleId, busySlots = {}) {
             type: 'section',
             text: { type: 'mrkdwn', text: '⚠️ まだ回答がありません。' },
         });
-        return { blocks, text: '📊 回答一覧（回答なし）' };
+        return {
+            type: 'modal',
+            title: { type: 'plain_text', text: '📊 回答一覧' },
+            close: { type: 'plain_text', text: '閉じる' },
+            blocks,
+        };
     }
 
     blocks.push({ type: 'divider' });
@@ -171,9 +176,11 @@ function buildResultBlocks(scheduleId, busySlots = {}) {
 
 
     return {
+        type: 'modal',
+        title: { type: 'plain_text', text: '📊 回答一覧' },
+        close: { type: 'plain_text', text: '閉じる' },
         blocks,
-        text: `📊 回答一覧（${userIds.length}名回答済み）`,
     };
 }
 
-module.exports = { buildResultBlocks };
+module.exports = { buildResultModalView };
