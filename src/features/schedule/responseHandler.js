@@ -173,22 +173,11 @@ const responseHandler = async ({ ack, body, view, client, logger }) => {
                                     },
                                 },
                                 {
-                                    type: 'actions',
-                                    elements: [
-                                        {
-                                            type: 'button',
-                                            text: { type: 'plain_text', text: '📥 結果CSVをスレッドに出力する' },
-                                            action_id: 'open_result_modal',
-                                            value: scheduleId,
-                                        },
-                                    ],
-                                },
-                                {
                                     type: 'context',
                                     elements: [
                                         {
                                             type: 'mrkdwn',
-                                            text: '✅ 全員の回答が完了したため、受付を終了しました。',
+                                            text: '✅ 全員の回答が完了したため、受付を終了しました。\nスレッド内の添付ファイルをご確認ください。',
                                         },
                                     ],
                                 },
