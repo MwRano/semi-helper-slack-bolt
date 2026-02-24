@@ -14,18 +14,26 @@ async function getBusySlots(startDate, endDate, timeSlots) {
 
     try {
         const credentialsPath = process.env.GOOGLE_CREDENTIALS_PATH;
+        const credentialsJson = process.env.GOOGLE_CREDENTIALS_JSON;
         const calendarId = process.env.GOOGLE_CALENDAR_ID;
 
-        if (!credentialsPath || !calendarId) {
+        if (!calendarId || (!credentialsPath && !credentialsJson)) {
             console.warn('[GoogleCalendar] 環境変数が設定されていません。スキップします。');
             return busySlots;
         }
 
         // サービスアカウント認証
-        const auth = new google.auth.GoogleAuth({
-            keyFile: path.resolve(credentialsPath),
+        const authOptions = {
             scopes: ['https://www.googleapis.com/auth/calendar.readonly'],
-        });
+        };
+
+        if (credentialsJson) {
+            authOptions.credentials = JSON.parse(credentialsJson);
+        } else {
+            authOptions.keyFile = path.resolve(credentialsPath);
+        }
+
+        const auth = new google.auth.GoogleAuth(authOptions);
 
         const calendar = google.calendar({ version: 'v3', auth });
 
