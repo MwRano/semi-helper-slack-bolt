@@ -12,7 +12,7 @@ function startHealthCheckServer(port) {
     });
 
     server.listen(port, () => {
-        console.log(`[HealthCheck] Health check server is listening on port ${port} (Production only)`);
+        console.log(`[HealthCheck] ヘルスチェックサーバーがポート ${port} で受け付けています (本番環境のみ)`);
     });
 }
 
