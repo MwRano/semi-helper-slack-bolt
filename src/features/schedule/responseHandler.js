@@ -1,7 +1,4 @@
 const { saveResponse, getSchedule, markResultPosted } = require('./store');
-const { buildResultBlocks } = require('./resultViews');
-const { getBusySlots } = require('./googleCalendarService');
-
 /**
  * 回答モーダル送信時のハンドラー
  * → 回答データを保存し、チャンネルに通知する
@@ -88,75 +85,85 @@ const responseHandler = async ({ ack, body, view, client, logger }) => {
                 if (allResponded) {
                     logger.info(`🎉 チャンネルメンバー全員（${members.length}名）が回答しました。結果を投稿します。`);
 
-                    // 先生の予定を考慮する場合のみ Google Calendar を呼び出す
-                    const busySlots = schedule.includeTeacher !== false
-                        ? await getBusySlots(schedule.startDate, schedule.endDate, schedule.timeSlots)
-                        : {};
-                    const result = buildResultBlocks(scheduleId, busySlots);
-                    if (result) {
+                    // スレッド上で作成者にメンションして知らせる（ボタンは元のメッセージにあるためテキストのみ）
+                    try {
                         await client.chat.postMessage({
                             channel: schedule.channelId,
                             thread_ts: schedule.threadTs,
-                            blocks: result.blocks,
-                            text: result.text,
+                            text: `<@${schedule.creatorId}> 対象メンバー全員（${members.length}名）の回答が完了しました！\n親メッセージのボタンから結果一覧をご確認ください。`,
                         });
-                        markResultPosted(scheduleId);
+                    } catch (notifyErr) {
+                        logger.error('作成者への通知に失敗しました:', notifyErr);
+                    }
 
-                        // スレッドの親メッセージ（フォーム）を更新してボタンを消す
-                        try {
-                            const deadlineDate = new Date(schedule.deadline * 1000);
-                            const deadlineText = deadlineDate.toLocaleString('ja-JP', {
-                                year: 'numeric',
-                                month: '2-digit',
-                                day: '2-digit',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                            });
+                    markResultPosted(scheduleId);
 
-                            await client.chat.update({
-                                channel: schedule.channelId,
-                                ts: schedule.threadTs,
-                                blocks: [
-                                    {
-                                        type: 'header',
-                                        text: {
-                                            type: 'plain_text',
-                                            text: '📅 日程調整',
-                                        },
+                    // スレッドの親メッセージ（フォーム）を更新してボタンを消す
+                    try {
+                        const deadlineDate = new Date(schedule.deadline * 1000);
+                        const deadlineText = deadlineDate.toLocaleString('ja-JP', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                        });
+
+                        await client.chat.update({
+                            channel: schedule.channelId,
+                            ts: schedule.threadTs,
+                            blocks: [
+                                {
+                                    type: 'header',
+                                    text: {
+                                        type: 'plain_text',
+                                        text: '📅 日程調整',
                                     },
-                                    {
-                                        type: 'section',
-                                        text: {
+                                },
+                                {
+                                    type: 'section',
+                                    text: {
+                                        type: 'mrkdwn',
+                                        text: `*作成者:* ${schedule.creatorName ? schedule.creatorName : '<@' + schedule.creatorId + '>'}　|　*締め切り:* ${deadlineText}`,
+                                    },
+                                },
+                                {
+                                    type: 'actions',
+                                    elements: [
+                                        {
+                                            type: 'button',
+                                            text: { type: 'plain_text', text: '👀 結果一覧を確認する' },
+                                            action_id: 'open_result_modal',
+                                            value: scheduleId,
+                                            style: 'primary',
+                                        },
+                                    ],
+                                },
+                                {
+                                    type: 'context',
+                                    elements: [
+                                        {
                                             type: 'mrkdwn',
-                                            text: `*作成者:* ${schedule.creatorName ? schedule.creatorName : '<@' + schedule.creatorId + '>'}　|　*締め切り:* ${deadlineText}`,
+                                            text: '✅ 全員の回答が完了したため、受付を終了しました。',
                                         },
-                                    },
-                                    {
-                                        type: 'context',
-                                        elements: [
-                                            {
-                                                type: 'mrkdwn',
-                                                text: '✅ 全員の回答が完了したため、受付を終了しました。',
-                                            },
-                                        ],
-                                    },
-                                ],
-                                text: '📅 日程調整の受付が終了しました',
-                            });
-                        } catch (updateErr) {
-                            logger.warn('親メッセージの更新（ボタン無効化）に失敗しました:', updateErr);
-                        }
+                                    ],
+                                },
+                            ],
+                            text: '📅 日程調整の受付が終了しました',
+                        });
+                    } catch (updateErr) {
+                        logger.warn('親メッセージの更新（ボタン無効化）に失敗しました:', updateErr);
+                    }
 
-                        // チャンネルメンション用メッセージを削除する
-                        if (schedule.channelMentionTs) {
-                            try {
-                                await client.chat.delete({
-                                    channel: schedule.channelId,
-                                    ts: schedule.channelMentionTs,
-                                });
-                            } catch (deleteErr) {
-                                logger.warn('チャンネルメンション用メッセージの削除に失敗しました:', deleteErr);
-                            }
+                    // チャンネルメンション用メッセージを削除する
+                    if (schedule.channelMentionTs) {
+                        try {
+                            await client.chat.delete({
+                                channel: schedule.channelId,
+                                ts: schedule.channelMentionTs,
+                            });
+                        } catch (deleteErr) {
+                            logger.warn('チャンネルメンション用メッセージの削除に失敗しました:', deleteErr);
                         }
                     }
                 }
