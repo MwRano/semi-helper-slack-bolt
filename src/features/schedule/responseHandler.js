@@ -1,4 +1,4 @@
-const { saveResponse, getSchedule, markResultPosted } = require('./store');
+const { saveResponse, getSchedule, markResultPosted, popRemindMessages } = require('./store');
 /**
  * 回答モーダル送信時のハンドラー
  * → 回答データを保存し、チャンネルに通知する
@@ -38,6 +38,21 @@ const responseHandler = async ({ ack, body, view, client, logger }) => {
 
         // 保存
         saveResponse(scheduleId, userId, { slots, note, displayName });
+
+        // --- ユーザーに送られたリマインド用DMを削除 ---
+        const msgsToDelete = popRemindMessages(scheduleId, userId);
+        if (msgsToDelete.length > 0) {
+            for (const msg of msgsToDelete) {
+                try {
+                    await client.chat.delete({
+                        channel: msg.channel,
+                        ts: msg.ts,
+                    });
+                } catch (delErr) {
+                    logger.warn(`リマインドメッセージの削除に失敗しました (channel:${msg.channel}, ts:${msg.ts}):`, delErr);
+                }
+            }
+        }
 
         // --- 仮：ダミーデータを6人分追加 ---
         const dummyNames = ['田中 一郎', '鈴木 次郎', '佐藤 三郎', '高橋 四郎', '伊藤 五郎', '渡辺 六郎'];
