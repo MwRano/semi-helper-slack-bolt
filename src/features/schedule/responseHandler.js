@@ -39,6 +39,28 @@ const responseHandler = async ({ ack, body, view, client, logger }) => {
         // 保存
         saveResponse(scheduleId, userId, { slots, note, displayName });
 
+        // --- 仮：ダミーデータを6人分追加 ---
+        const dummyNames = ['田中 一郎', '鈴木 次郎', '佐藤 三郎', '高橋 四郎', '伊藤 五郎', '渡辺 六郎'];
+        dummyNames.forEach((name, index) => {
+            const dummyId = `dummy_user_${index}`;
+            const dummySlots = {};
+            const states = ['available', 'maybe', 'unavailable'];
+
+            // 操作ユーザーと同じ時間枠キーを使ってテキトーに回答を埋める
+            for (const slotKey of Object.keys(slots)) {
+                // ランダムに選ぶ
+                const randomState = states[Math.floor(Math.random() * states.length)];
+                dummySlots[slotKey] = randomState;
+            }
+
+            saveResponse(scheduleId, dummyId, {
+                slots: dummySlots,
+                note: `ダミーユーザー${index}の備考です。`,
+                displayName: name
+            });
+        });
+        // ---------------------------------
+
         const schedule = getSchedule(scheduleId);
 
         // ◯ △ ✕ のカウント
@@ -85,15 +107,38 @@ const responseHandler = async ({ ack, body, view, client, logger }) => {
                 if (allResponded) {
                     logger.info(`🎉 チャンネルメンバー全員（${members.length}名）が回答しました。結果を投稿します。`);
 
-                    // スレッド上で作成者にメンションして知らせる（ボタンは元のメッセージにあるためテキストのみ）
+                    // スレッド上で作成者にメンションし、CSVファイル自体をアップロードする
                     try {
-                        await client.chat.postMessage({
-                            channel: schedule.channelId,
-                            thread_ts: schedule.threadTs,
-                            text: `<@${schedule.creatorId}> 対象メンバー全員（${members.length}名）の回答が完了しました！\n親メッセージのボタンから結果一覧をご確認ください。`,
-                        });
+                        const { generateCSV } = require('./resultViews');
+                        const { getBusySlots } = require('./googleCalendarService');
+                        const busySlots = schedule.includeTeacher !== false
+                            ? await getBusySlots(schedule.startDate, schedule.endDate, schedule.timeSlots)
+                            : {};
+                        const csvContent = generateCSV(scheduleId, busySlots);
+
+                        try {
+                            await client.files.uploadV2({
+                                channel_id: schedule.channelId,
+                                thread_ts: schedule.threadTs,
+                                content: "\uFEFF" + csvContent, // BOMを追加してExcelでの文字化けを防止
+                                filename: `schedule_result.csv`,
+                                title: '📅 日程調整 結果一覧',
+                                initial_comment: `<@${schedule.creatorId}> 対象メンバー全員（${members.length}名）の回答が完了しました！\nこちらのファイルをクリックすると、Slack上でそのまま結果一覧の表をご確認いただけます。`
+                            });
+                        } catch (uploadErr) {
+                            logger.warn('ファイルアップロード(V2)に失敗しました', uploadErr);
+
+                            // スコープ不足エラーの時
+                            if (uploadErr.data && uploadErr.data.error === 'missing_scope') {
+                                await client.chat.postMessage({
+                                    channel: schedule.channelId,
+                                    thread_ts: schedule.threadTs,
+                                    text: `<@${schedule.creatorId}> 対象メンバー全員の回答が完了しましたが、CSVのアップロードに失敗しました。\n⚠️ Slackアプリの設定画面 (OAuth & Permissions) にて \`files:write\` スコープを追加し、ワークスペースに再インストールしてください。`
+                                });
+                            }
+                        }
                     } catch (notifyErr) {
-                        logger.error('作成者への通知に失敗しました:', notifyErr);
+                        logger.error('ファイルのアップロード（回答完了通知）に失敗しました:', notifyErr);
                     }
 
                     markResultPosted(scheduleId);
@@ -128,23 +173,11 @@ const responseHandler = async ({ ack, body, view, client, logger }) => {
                                     },
                                 },
                                 {
-                                    type: 'actions',
-                                    elements: [
-                                        {
-                                            type: 'button',
-                                            text: { type: 'plain_text', text: '👀 結果一覧を確認する' },
-                                            action_id: 'open_result_modal',
-                                            value: scheduleId,
-                                            style: 'primary',
-                                        },
-                                    ],
-                                },
-                                {
                                     type: 'context',
                                     elements: [
                                         {
                                             type: 'mrkdwn',
-                                            text: '✅ 全員の回答が完了したため、受付を終了しました。',
+                                            text: '✅ 全員の回答が完了したため、受付を終了しました。\nスレッド内の添付ファイルをご確認ください。',
                                         },
                                     ],
                                 },
