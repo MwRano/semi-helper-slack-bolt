@@ -27,8 +27,8 @@ const responseHandler = async ({ ack, body, view, client, logger }) => {
         // 備考を取得
         const note = values.response_note_block?.response_note?.value || '';
 
-        // 表示名を取得
-        let displayName = userId;
+        // 表示名を取得（ペイロードから取得してAPIエラー時も名前を表示できるようにする）
+        let displayName = body.user.name || body.user.username || userId;
         try {
             const userInfo = await client.users.info({ user: userId });
             displayName =
@@ -36,9 +36,7 @@ const responseHandler = async ({ ack, body, view, client, logger }) => {
                 userInfo.user.real_name ||
                 userInfo.user.name;
         } catch (e) {
-            logger.warn(`ユーザー情報の取得に失敗しました(users:read権限が不足している可能性があります): ${e.message}`);
-            // フォールバック: body.user.name があれば使用、なければ ID そのまま
-            displayName = body.user.name || userId;
+            logger.warn(`ユーザー情報の取得をスキップしました (名前: ${displayName})`);
         }
 
         // 保存
@@ -130,7 +128,7 @@ const responseHandler = async ({ ack, body, view, client, logger }) => {
                                         type: 'section',
                                         text: {
                                             type: 'mrkdwn',
-                                            text: `*作成者:* <@${schedule.creatorId}>　|　*締め切り:* ${deadlineText}`,
+                                            text: `*作成者:* ${schedule.creatorName ? schedule.creatorName : '<@' + schedule.creatorId + '>'}　|　*締め切り:* ${deadlineText}`,
                                         },
                                     },
                                     {

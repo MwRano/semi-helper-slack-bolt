@@ -41,10 +41,22 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
             minute: '2-digit',
         });
 
+        // ペイロードに含まれるユーザー名を使用する（APIのスコープ不足エラーを回避）
+        let creatorName = body.user.name || body.user.username || '不明なユーザー';
+
+        try {
+            // users:read スコープがあればより正確な表示名を取得可能
+            const userInfo = await client.users.info({ user: userId });
+            creatorName = userInfo.user.real_name || userInfo.user.name;
+        } catch (e) {
+            logger.warn(`ユーザー情報の取得をスキップしました (名前: ${creatorName})`);
+        }
+
         // スケジュールデータを保存
         const scheduleId = generateScheduleId();
         saveSchedule(scheduleId, {
             creatorId: userId,
+            creatorName: creatorName, // 名前も保存しておく
             channelId: channel,
             startDate,
             endDate,
@@ -57,7 +69,7 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
         logger.info('========================================');
         logger.info('📅 日程調整が作成されました');
         logger.info(`  スケジュールID: ${scheduleId}`);
-        logger.info(`  作成者: ${userId}`);
+        logger.info(`  作成者: ${userId} (${creatorName})`);
         logger.info(`  調整期間: ${startDate} 〜 ${endDate}`);
         logger.info(`  締め切り: ${deadlineText}`);
         logger.info(`  時間枠: ${timeSlots.map((o) => o.text.text).join(', ')}`);
@@ -84,7 +96,7 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
                     type: 'section',
                     text: {
                         type: 'mrkdwn',
-                        text: `*作成者:* <@${userId}>　|　*締め切り:* ${deadlineText}`,
+                        text: `*作成者:* ${creatorName}　|　*締め切り:* ${deadlineText}`,
                     },
                 },
                 {
@@ -125,7 +137,7 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
                             elements: [
                                 {
                                     type: 'mrkdwn',
-                                    text: `✅ <@${userId}> によって日程調整フォームが作成されました。`,
+                                    text: `✅ ${creatorName} によって日程調整フォームが作成されました。`,
                                 },
                             ],
                         },
