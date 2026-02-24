@@ -151,11 +151,13 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
                     },
                 },
                 {
-                    type: 'section',
-                    text: {
+                    type: 'context',
+                    elements: [{
                         type: 'mrkdwn',
-                        text: `*作成者:* ${creatorName}　|　*締め切り:* ${deadlineText}`,
+                        text:
+                            `*作成者:* ${creatorName}　|　*締め切り:* ${deadlineText}\n*期間:* ${startDate} 〜 ${endDate} (${timeSlots.length}枠)　|　*先生の予定:* ${includeTeacher ? '考慮あり' : 'なし'}　|　*通知:* ${remindHours.length > 0 ? remindHours.map(h => h + '時間前').join('・') : 'なし'}\n*時間枠:* ${timeSlots.map(o => o.text.text).join(' / ')}`
                     },
+                    ],
                 },
                 {
                     type: 'actions',
