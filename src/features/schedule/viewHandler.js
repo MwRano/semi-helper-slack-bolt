@@ -1,4 +1,4 @@
-const { saveSchedule, generateScheduleId, updateScheduleThreadTs, saveChannelMentionTs } = require('./store');
+const { saveSchedule, generateScheduleId, updateScheduleThreadTs, saveChannelMentionTs, getAllSchedules, markAsClosed } = require('./store');
 
 /**
  * 日程調整モーダル送信時のハンドラー
@@ -74,6 +74,64 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
         logger.info(`  締め切り: ${deadlineText}`);
         logger.info(`  時間枠: ${timeSlots.map((o) => o.text.text).join(', ')}`);
         logger.info('========================================');
+
+        // 同じチャンネルにある未完了の過去の日程調整フォームを強制終了する
+        const allSchedules = getAllSchedules();
+        for (const [oldId, oldSchedule] of allSchedules.entries()) {
+            if (oldId !== scheduleId && oldSchedule.channelId === channel && !oldSchedule.resultPosted && !oldSchedule.isClosed) {
+                if (oldSchedule.threadTs) {
+                    try {
+                        const oldDeadlineDate = new Date(oldSchedule.deadline * 1000);
+                        const oldDeadlineText = oldDeadlineDate.toLocaleString('ja-JP', {
+                            year: 'numeric', month: '2-digit', day: '2-digit',
+                            hour: '2-digit', minute: '2-digit',
+                        });
+
+                        await client.chat.update({
+                            channel: oldSchedule.channelId,
+                            ts: oldSchedule.threadTs,
+                            blocks: [
+                                {
+                                    type: 'header',
+                                    text: { type: 'plain_text', text: '📅 日程調整' },
+                                },
+                                {
+                                    type: 'section',
+                                    text: { type: 'mrkdwn', text: `*作成者:* ${oldSchedule.creatorName || '<@' + oldSchedule.creatorId + '>'}　|　*締め切り:* ${oldDeadlineText}` },
+                                },
+                                {
+                                    type: 'context',
+                                    elements: [
+                                        {
+                                            type: 'mrkdwn',
+                                            text: `⚠️ 新しい日程調整が作成されたため、このフォームの受付は自動終了しました。`,
+                                        },
+                                    ],
+                                },
+                            ],
+                            text: '📅 日程調整の受付が終了しました',
+                        });
+                        logger.info(`🔄 古い日程調整 (${oldId}) のボタンを自動無効化しました`);
+
+                        // チャンネルメンション（リマインド用）があれば削除
+                        if (oldSchedule.channelMentionTs) {
+                            try {
+                                await client.chat.delete({
+                                    channel: oldSchedule.channelId,
+                                    ts: oldSchedule.channelMentionTs,
+                                });
+                            } catch (delErr) {
+                                logger.warn('古い通知メッセージの削除に失敗しました:', delErr);
+                            }
+                        }
+
+                    } catch (updateErr) {
+                        logger.error(`古い日程調整のメッセージ更新に失敗しました (${oldId}):`, updateErr);
+                    }
+                }
+                markAsClosed(oldId);
+            }
+        }
 
         // @channel メンション（スレッドとは分離して通知のみ）
         const channelMentionMsg = await client.chat.postMessage({

@@ -70,6 +70,17 @@ function markResultPosted(scheduleId) {
 }
 
 /**
+ * 手動または自動で受付を終了したフラグをセット
+ */
+function markAsClosed(scheduleId) {
+    const schedule = schedules.get(scheduleId);
+    if (schedule) {
+        schedule.resultPosted = true; // クーロンなどの処理を行わせないため
+        schedule.isClosed = true;
+    }
+}
+
+/**
  * 指定した時間のリマインド済みフラグをセット
  */
 function markRemindedHour(scheduleId, hour) {
@@ -152,6 +163,7 @@ module.exports = {
     generateScheduleId,
     getAllSchedules,
     markResultPosted,
+    markAsClosed,
     markRemindedHour,
     updateScheduleThreadTs,
     saveChannelMentionTs,
