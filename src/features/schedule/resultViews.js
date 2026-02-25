@@ -1,4 +1,6 @@
 const { getSchedule } = require('./store');
+const { jsPDF } = require("jspdf");
+const autoTable = require("jspdf-autotable").default || require("jspdf-autotable");
 
 const WEEKDAYS_JA = ['日', '月', '火', '水', '木', '金', '土'];
 
@@ -148,4 +150,114 @@ function generateCSV(scheduleId, busySlots = {}) {
     return csvLines.join('\n');
 }
 
-module.exports = { generateCSV };
+/**
+ * 結果をPDFのBufferとして取得
+ */
+function generatePDF(scheduleId, busySlots = {}) {
+    const schedule = getSchedule(scheduleId);
+    if (!schedule) return null;
+
+    const { startDate, endDate, timeSlots, responses } = schedule;
+    const weekdays = getWeekdaysBetween(startDate, endDate);
+    const userIds = Object.keys(responses);
+    const hasBusy = Object.keys(busySlots).length > 0;
+
+    const doc = new jsPDF();
+
+    doc.setFontSize(14);
+    doc.text("Schedule Result", 14, 15);
+
+    // ヘッダー行を作成
+    const headers = ['Date', 'Time'];
+    if (hasBusy) headers.push('Teacher');
+
+    // メンバー名を追加
+    const memberNames = userIds.map((uid) => responses[uid]?.displayName || uid);
+    headers.push(...memberNames, 'Total');
+
+    let maxScore = -1;
+    const slotDataList = [];
+
+    for (const day of weekdays) {
+        for (const slot of timeSlots) {
+            const slotKey = `${day.dateStr}_${slot.value}`;
+            const isBusy = busySlots[slotKey] === true;
+
+            let availableCount = 0;
+            userIds.forEach(uid => {
+                if (responses[uid]?.slots?.[slotKey] === 'available') {
+                    availableCount++;
+                }
+            });
+
+            const score = isBusy ? -100 : availableCount;
+            if (score > maxScore) maxScore = score;
+
+            slotDataList.push({ day, slot, slotKey, isBusy, availableCount, score });
+        }
+    }
+
+    const bodyData = [];
+    for (const data of slotDataList) {
+        const row = [];
+        row.push(data.day.dateStr); // 日付はYYYY-MM-DDをそのまま使う(文字化け防止)
+        row.push(getShortLabel(data.slot.text.text));
+
+        if (hasBusy) {
+            row.push(data.isBusy ? 'NG' : 'OK');
+        }
+
+        userIds.forEach(uid => {
+            const state = responses[uid]?.slots?.[data.slotKey] || 'unavailable';
+            if (state === 'available') row.push('O');
+            else if (state === 'maybe') row.push('-');
+            else row.push('X');
+        });
+
+        const uniqueScores = [...new Set(slotDataList.map(d => d.score))]
+            .filter(s => s >= 0)
+            .sort((a, b) => b - a);
+
+        let totalText = `${data.availableCount}`;
+        if (data.score > 0) {
+            if (data.score === uniqueScores[0]) totalText += ' (1st)';
+            else if (uniqueScores.length > 1 && data.score === uniqueScores[1]) totalText += ' (2nd)';
+            else if (uniqueScores.length > 2 && data.score === uniqueScores[2]) totalText += ' (3rd)';
+
+            if (data.availableCount === userIds.length && userIds.length > 0) {
+                totalText += ' *ALL OK*';
+            }
+        }
+
+        row.push(totalText);
+        bodyData.push(row);
+    }
+
+    autoTable(doc, {
+        startY: 20,
+        head: [headers],
+        body: bodyData,
+        theme: 'grid',
+        styles: { fontStyle: 'normal' }
+    });
+
+    // 備考欄をPDFの末尾に追加
+    const notes = userIds
+        .filter(uid => responses[uid]?.note)
+        .map(uid => `${responses[uid]?.displayName || uid}: ${responses[uid].note}`);
+
+    if (notes.length > 0) {
+        let finalY = doc.lastAutoTable.finalY || 20;
+        doc.text("Notes:", 14, finalY + 10);
+        let noteY = finalY + 16;
+        notes.forEach(note => {
+            doc.text(note, 14, noteY);
+            noteY += 6;
+        });
+    }
+
+    // ArrayBufferをBufferに変換して返す
+    return Buffer.from(doc.output('arraybuffer'));
+}
+
+module.exports = { generateCSV, generatePDF };
