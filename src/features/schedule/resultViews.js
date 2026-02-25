@@ -202,9 +202,26 @@ function generatePDF(scheduleId, busySlots = {}) {
         .sort((a, b) => b - a);
 
     const bodyData = [];
+    let lastDateStr = null;
+    let dateCellMap = {};
+
     for (const data of slotDataList) {
         const row = [];
-        row.push(data.day.dateStr); // 日付はYYYY-MM-DDをそのまま使う(文字化け防止)
+
+        // 日付の変わり目でセルを結合（rowSpan）して境目を強調
+        if (data.day.dateStr !== lastDateStr) {
+            lastDateStr = data.day.dateStr;
+            const dateCell = {
+                content: data.day.dateStr,
+                rowSpan: 1,
+                styles: { valign: 'middle', halign: 'center', fillColor: [240, 240, 240], fontStyle: 'bold' }
+            };
+            row.push(dateCell);
+            dateCellMap[data.day.dateStr] = dateCell;
+        } else {
+            dateCellMap[data.day.dateStr].rowSpan++;
+        }
+
         row.push(getShortLabel(data.slot.text.text));
 
         if (hasBusy) {
@@ -241,6 +258,9 @@ function generatePDF(scheduleId, busySlots = {}) {
         styles: { fontStyle: 'normal' },
         didParseCell: function (data) {
             if (data.section === 'body') {
+                // 日付列はグレーの結合セルのままにするためスキップ
+                if (data.column.index === 0) return;
+
                 const rowScore = slotDataList[data.row.index].score;
                 if (rowScore > 0) {
                     if (rowScore === uniqueScores[0]) {
