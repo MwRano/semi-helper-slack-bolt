@@ -1,6 +1,5 @@
 const { buildScheduleModalView } = require('./views');
 const { buildResponseModalView } = require('./responseViews');
-const { buildResultModalView } = require('./resultViews');
 const { getSchedule } = require('./store');
 const { getBusySlots } = require('./googleCalendarService');
 
@@ -119,43 +118,6 @@ const openResponseModalAction = async ({ ack, body, client, logger }) => {
     }
 };
 
-/**
- * 「結果一覧を確認する」ボタンクリック時のハンドラー
- * → 結果一覧モーダルを表示する
- */
-const openResultModalAction = async ({ ack, body, client, logger }) => {
-    await ack();
 
-    try {
-        const scheduleId = body.actions[0].value;
-        const schedule = getSchedule(scheduleId);
 
-        if (!schedule) {
-            logger.error(`スケジュールが見つかりません: ${scheduleId}`);
-            return;
-        }
-
-        // 先生の予定を考慮する場合のみ Google Calendar を呼び出す
-        const busySlots = schedule.includeTeacher !== false
-            ? await getBusySlots(schedule.startDate, schedule.endDate, schedule.timeSlots)
-            : {};
-
-        const view = buildResultModalView(scheduleId, busySlots);
-
-        if (!view) {
-            logger.error(`結果モーダルを生成できませんでした: ${scheduleId}`);
-            return;
-        }
-
-        await client.views.open({
-            trigger_id: body.trigger_id,
-            view,
-        });
-
-        logger.info(`📊 結果確認用モーダルを表示しました (${scheduleId})`);
-    } catch (error) {
-        logger.error('結果確認用モーダルの表示に失敗しました:', error);
-    }
-};
-
-module.exports = { openModalAction, switchModeAction, clearTimeSlotsAction, openResponseModalAction, openResultModalAction };
+module.exports = { openModalAction, switchModeAction, clearTimeSlotsAction, openResponseModalAction };

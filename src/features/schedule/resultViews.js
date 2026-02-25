@@ -37,188 +37,6 @@ function getShortLabel(slotText) {
     return slotText;
 }
 
-/**
- * 回答一覧モーダルのViewを生成
- * @param {string} scheduleId
- * @param {Object} busySlots - ビジーなスロットのMap { "2026-03-02_1": true, ... }
- * @returns {Object|null} Modal View object
- */
-function buildResultModalView(scheduleId, busySlots = {}) {
-    const schedule = getSchedule(scheduleId);
-    if (!schedule) return null;
-
-    const { startDate, endDate, timeSlots, responses } = schedule;
-    const weekdays = getWeekdaysBetween(startDate, endDate);
-    const userIds = Object.keys(responses);
-    const blocks = [];
-
-    // ===== ヘッダー =====
-    blocks.push({
-        type: 'header',
-        text: { type: 'plain_text', text: '📊 回答一覧' },
-    });
-    blocks.push({
-        type: 'section',
-        text: {
-            type: 'mrkdwn',
-            text: `*期間:* ${startDate} 〜 ${endDate}\n*回答者:* ${userIds.map((uid) => responses[uid]?.displayName || uid).join(', ')}（${userIds.length}名）`,
-        },
-    });
-
-    if (userIds.length === 0) {
-        blocks.push({
-            type: 'section',
-            text: { type: 'mrkdwn', text: '⚠️ まだ回答がありません。' },
-        });
-        return {
-            type: 'modal',
-            title: { type: 'plain_text', text: '📊 回答一覧' },
-            close: { type: 'plain_text', text: '閉じる' },
-            blocks,
-        };
-    }
-
-    blocks.push({ type: 'divider' });
-
-    // ===== スロットごとの集計 =====
-    const slotStats = [];
-
-    for (const day of weekdays) {
-        for (const slot of timeSlots) {
-            const slotKey = `${day.dateStr}_${slot.value}`;
-            const shortLabel = getShortLabel(slot.text.text);
-            const rowLabel = `${day.label} ${shortLabel}`;
-
-            let available = [];
-            let maybe = [];
-            let unavailable = [];
-
-            userIds.forEach(uid => {
-                const name = responses[uid]?.displayName || uid;
-                const state = responses[uid]?.slots?.[slotKey] || 'unavailable';
-                if (state === 'available') available.push(name);
-                else if (state === 'maybe') maybe.push(name);
-                else if (state === 'unavailable') unavailable.push(name);
-            });
-
-            const isBusy = busySlots[slotKey] === true;
-
-            // スコア算出（◯=2点, △=1点, ✕=0点、先生NG=減点100点）
-            let score = available.length * 2 + maybe.length * 1;
-            if (isBusy) score -= 100;
-
-            slotStats.push({
-                dayLabel: day.label,
-                slotLabel: shortLabel,
-                rowLabel,
-                available,
-                maybe,
-                unavailable,
-                isBusy,
-                total: userIds.length,
-                score,
-            });
-        }
-    }
-
-    // ===== トップ3のランキング ======
-    // スコア順にソート（コピー配列）
-    const sortedStats = [...slotStats].sort((a, b) => b.score - a.score);
-
-    blocks.push({
-        type: 'section',
-        text: { type: 'mrkdwn', text: '*🏆 全員が参加しやすい日程ランキング*' }
-    });
-
-    const topSlots = sortedStats.slice(0, 3);
-    const topText = topSlots.map((stat, i) => {
-        const medal = ['🥇', '🥈', '🥉'][i] || '・';
-        let text = `${medal} *${stat.rowLabel}* (🟢 ${stat.available.length}名 / 🟡 ${stat.maybe.length}名 / 🔴 ${stat.unavailable.length}名)`;
-        if (stat.total > 0 && stat.available.length === stat.total && !stat.isBusy) {
-            text += ' ✨全員OK!';
-        }
-        if (stat.isBusy) {
-            text += ' 👨‍🏫 先生NG';
-        }
-        const ngList = [];
-        if (stat.unavailable.length > 0) ngList.push(`🔴NG: ${stat.unavailable.join(', ')}`);
-        if (stat.maybe.length > 0) ngList.push(`🟡△: ${stat.maybe.join(', ')}`);
-        if (ngList.length > 0) {
-            text += `\n    └ ${ngList.join(' | ')}`;
-        }
-        return text;
-    }).join('\n\n');
-
-    blocks.push({
-        type: 'section',
-        text: { type: 'mrkdwn', text: topText || '候補なし' }
-    });
-
-    blocks.push({ type: 'divider' });
-
-    // ===== 日程ごとのリスト表示 =====
-    blocks.push({
-        type: 'section',
-        text: { type: 'mrkdwn', text: '*📅 全日程の回答状況*' }
-    });
-
-    let currentDayLabel = '';
-    let dayText = '';
-
-    const flushDayText = () => {
-        if (dayText) {
-            blocks.push({
-                type: 'section',
-                text: { type: 'mrkdwn', text: dayText }
-            });
-            dayText = '';
-        }
-    };
-
-    for (const stat of slotStats) {
-        if (stat.dayLabel !== currentDayLabel) {
-            flushDayText();
-            currentDayLabel = stat.dayLabel;
-            dayText = `*▼ ${currentDayLabel}*\n`;
-        }
-
-        let line = `・${stat.slotLabel}：🟢 ${stat.available.length}名 / 🟡 ${stat.maybe.length}名 / 🔴 ${stat.unavailable.length}名`;
-        if (stat.isBusy) line += ' 👨‍🏫✕';
-
-        const details = [];
-        if (stat.unavailable.length > 0) details.push(`🔴${stat.unavailable.join(', ')}`);
-        if (stat.maybe.length > 0) details.push(`🟡${stat.maybe.join(', ')}`);
-
-        if (details.length > 0) {
-            line += `\n    └ ${details.join(' | ')}`;
-        } else if (stat.total > 0 && stat.available.length === stat.total && !stat.isBusy) {
-            line += ' ✨全員OK!';
-        }
-
-        dayText += line + '\n';
-    }
-    flushDayText();
-
-    // ===== 備考 =====
-    const notes = userIds
-        .filter((uid) => responses[uid]?.note)
-        .map((uid) => `*${responses[uid]?.displayName || uid}*: ${responses[uid].note}`);
-
-    if (notes.length > 0) {
-        blocks.push({ type: 'divider' });
-        blocks.push({
-            type: 'section',
-            text: { type: 'mrkdwn', text: `*📝 備考*\n${notes.join('\n')}` },
-        });
-    }
-
-    return {
-        type: 'modal',
-        title: { type: 'plain_text', text: '📊 回答一覧' },
-        close: { type: 'plain_text', text: '閉じる' },
-        blocks,
-    };
-}
 
 /**
  * 結果をCSV形式の文字列で取得
@@ -315,7 +133,19 @@ function generateCSV(scheduleId, busySlots = {}) {
         csvLines.push(row.join(','));
     }
 
+    // 備考欄をCSVの末尾に追加
+    const notes = userIds
+        .filter(uid => responses[uid]?.note)
+        .map(uid => `"${responses[uid]?.displayName || uid}","${responses[uid].note.replace(/"/g, '""')}"`);
+
+    if (notes.length > 0) {
+        csvLines.push(''); // 空行
+        csvLines.push('【備考（コメント）】');
+        csvLines.push('回答者,内容');
+        csvLines.push(...notes);
+    }
+
     return csvLines.join('\n');
 }
 
-module.exports = { buildResultModalView, generateCSV };
+module.exports = { generateCSV };
