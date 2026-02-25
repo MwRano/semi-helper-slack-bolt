@@ -1,3 +1,5 @@
+const { getChannelSettings } = require('./store');
+
 /**
  * 「日程調整」を含むメッセージを受信したときのハンドラー
  * → ボタン付きメッセージを返す（ボタンクリックでモーダルを開く）
@@ -9,6 +11,28 @@ const messageHandler = async ({ message, say, logger }) => {
         logger.info(`  ユーザー: ${message.user}`);
         logger.info(`  チャンネル: ${message.channel}`);
         logger.info('========================================');
+
+        const settings = getChannelSettings(message.channel);
+        let defaultText = 'デフォルト: 来週月〜金 / 1〜4限 / 締切2日後 / 通知24h・1h前 / 先生の予定考慮';
+
+        if (settings) {
+            const startStr = settings.startOffsetDays !== undefined ? `+${settings.startOffsetDays}日` : '来週月';
+            const endStr = settings.endOffsetDays !== undefined ? `+${settings.endOffsetDays}日` : '来週金';
+            const modeStr = settings.mode === 'time' ? '時間ベース' : '限ベース';
+            let slotsStr = '指定枠';
+            if (settings.timeSlots?.length > 0) {
+                if (settings.mode === 'period') {
+                    slotsStr = settings.timeSlots.map(s => s + '限').join('・');
+                } else {
+                    slotsStr = `${settings.timeSlots.length}枠`;
+                }
+            }
+            const deadlineStr = settings.deadLineOffsetHours !== undefined ? `締切${Math.round(settings.deadLineOffsetHours / 24)}日後` : '締切+2日';
+            const remindStr = settings.remindHours?.length > 0 ? `通知${settings.remindHours.join('・')}h前` : '通知なし';
+            const teacherStr = settings.includeTeacher ? '先生の予定考慮あり' : '先生の予定考慮なし';
+
+            defaultText = `📝 チャンネル設定適用中: 期間(${startStr}〜${endStr}) / ${modeStr}(${slotsStr}) / ${deadlineStr} / ${remindStr} / ${teacherStr}`;
+        }
 
         await say({
             blocks: [
@@ -35,7 +59,7 @@ const messageHandler = async ({ message, say, logger }) => {
                     elements: [
                         {
                             type: 'mrkdwn',
-                            text: 'デフォルト: 来週月〜金 / 1〜4限 / 締切2日後 / リマインド24h・1h前 / 先生の予定考慮',
+                            text: defaultText,
                         },
                     ],
                 },

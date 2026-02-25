@@ -1,10 +1,16 @@
 const { generateTimeSlotOptions, getDefaultTimeSlots } = require('../../utils/timeSlots');
+const { getChannelSettings } = require('./store');
+const { config } = require('../../config/index');
 
 /**
  * 来週の月曜日の日付を返す（YYYY-MM-DD）
  */
-function getNextMonday() {
-    const now = new Date();
+function getNextMonday(offsetBaseDate = new Date(), startOffsetDays = undefined) {
+    const now = new Date(offsetBaseDate);
+    if (startOffsetDays !== undefined) {
+        now.setDate(now.getDate() + startOffsetDays);
+        return formatDate(now);
+    }
     const day = now.getDay();
     const daysUntilNextMonday = day === 0 ? 1 : 8 - day;
     const nextMonday = new Date(now);
@@ -15,8 +21,12 @@ function getNextMonday() {
 /**
  * 来週の金曜日の日付を返す（YYYY-MM-DD）
  */
-function getNextFriday() {
-    const now = new Date();
+function getNextFriday(offsetBaseDate = new Date(), endOffsetDays = undefined) {
+    const now = new Date(offsetBaseDate);
+    if (endOffsetDays !== undefined) {
+        now.setDate(now.getDate() + endOffsetDays);
+        return formatDate(now);
+    }
     const day = now.getDay();
     const daysUntilNextMonday = day === 0 ? 1 : 8 - day;
     const nextFriday = new Date(now);
@@ -27,8 +37,13 @@ function getNextFriday() {
 /**
  * 現在から2日後のUnixタイムスタンプを返す
  */
-function getDeadlineTimestamp() {
+function getDeadlineTimestamp(offsetHours = undefined) {
     const deadline = new Date();
+    if (offsetHours !== undefined) {
+        deadline.setHours(deadline.getHours() + offsetHours);
+        deadline.setMinutes(0, 0, 0);
+        return Math.floor(deadline.getTime() / 1000);
+    }
     deadline.setDate(deadline.getDate() + 2);
     deadline.setSeconds(0, 0);
     return Math.floor(deadline.getTime() / 1000);
@@ -71,9 +86,17 @@ function buildModeSelectBlock(currentMode) {
  * 時間枠選択ブロックを生成
  * renderCount を block_id に含めることで、切替時に選択値を強制リセットする
  */
-function buildTimeSlotSelectBlock(mode, renderCount = 0, showDefaults = true) {
+function buildTimeSlotSelectBlock(mode, renderCount = 0, showDefaults = true, channelSettings = undefined) {
     const options = generateTimeSlotOptions(mode);
-    const defaults = showDefaults ? getDefaultTimeSlots(mode) : undefined;
+    let defaults = undefined;
+
+    if (showDefaults) {
+        if (channelSettings && channelSettings.timeSlots && channelSettings.mode === mode) {
+            defaults = options.filter(opt => channelSettings.timeSlots.includes(opt.value));
+        } else {
+            defaults = getDefaultTimeSlots(mode);
+        }
+    }
 
     return {
         type: 'input',
@@ -117,6 +140,42 @@ function buildClearButtonBlock() {
  * @param {string} [messageTs] - モーダルを開いた際の元メッセージのタイムスタンプ
  */
 function buildScheduleModalView(channelId, mode = 'period', currentValues = {}, renderCount = 0, showDefaults = true, messageTs = null) {
+    const channelSettings = getChannelSettings(channelId);
+    const isInitialRender = Object.keys(currentValues).length === 0;
+
+    let initialRemindHours = (config.defaults && config.defaults.remindHours) || ['24', '1'];
+    let initialIncludeTeacher = (config.defaults && config.defaults.includeTeacher !== undefined) ? config.defaults.includeTeacher : true;
+    let initialStartOffsetDays = config.defaults?.periodOffsetDays?.start;
+    let initialEndOffsetDays = config.defaults?.periodOffsetDays?.end;
+    let initialDeadLineOffsetHours = config.defaults?.deadLineOffsetHours;
+
+    if (isInitialRender && channelSettings) {
+        if (channelSettings.remindHours !== undefined) initialRemindHours = channelSettings.remindHours.map(String);
+        if (channelSettings.includeTeacher !== undefined) initialIncludeTeacher = channelSettings.includeTeacher;
+        if (channelSettings.startOffsetDays !== undefined) initialStartOffsetDays = channelSettings.startOffsetDays;
+        if (channelSettings.endOffsetDays !== undefined) initialEndOffsetDays = channelSettings.endOffsetDays;
+        if (channelSettings.deadLineOffsetHours !== undefined) initialDeadLineOffsetHours = channelSettings.deadLineOffsetHours;
+    }
+
+    if (!isInitialRender) {
+        if (currentValues.remindHours !== undefined) initialRemindHours = currentValues.remindHours;
+        if (currentValues.includeTeacher !== undefined) initialIncludeTeacher = currentValues.includeTeacher;
+    }
+
+    const saveDefaultOptions = [
+        {
+            text: { type: 'plain_text', text: '📝 この「期間/締め切り/時間枠/通知/先生の予定」を次回のデフォルト値として保存する' },
+            value: 'save_as_default',
+        }
+    ];
+
+    if (channelSettings) {
+        saveDefaultOptions.push({
+            text: { type: 'plain_text', text: '🔄 保存されたデフォルト設定を削除し、システム標準に戻す' },
+            value: 'reset_default',
+        });
+    }
+
     return {
         type: 'modal',
         callback_id: 'schedule_adjustment_modal',
@@ -145,7 +204,7 @@ function buildScheduleModalView(channelId, mode = 'period', currentValues = {}, 
                 element: {
                     type: 'datepicker',
                     action_id: 'start_date',
-                    initial_date: currentValues.startDate || getNextMonday(),
+                    initial_date: currentValues.startDate || getNextMonday(new Date(), initialStartOffsetDays),
                     placeholder: { type: 'plain_text', text: '開始日を選択' },
                 },
                 label: { type: 'plain_text', text: '開始日' },
@@ -156,7 +215,7 @@ function buildScheduleModalView(channelId, mode = 'period', currentValues = {}, 
                 element: {
                     type: 'datepicker',
                     action_id: 'end_date',
-                    initial_date: currentValues.endDate || getNextFriday(),
+                    initial_date: currentValues.endDate || getNextFriday(new Date(), initialEndOffsetDays),
                     placeholder: { type: 'plain_text', text: '終了日を選択' },
                 },
                 label: { type: 'plain_text', text: '終了日' },
@@ -174,7 +233,7 @@ function buildScheduleModalView(channelId, mode = 'period', currentValues = {}, 
                 element: {
                     type: 'datetimepicker',
                     action_id: 'deadline',
-                    initial_date_time: currentValues.deadline || getDeadlineTimestamp(),
+                    initial_date_time: currentValues.deadline || getDeadlineTimestamp(initialDeadLineOffsetHours),
                 },
                 label: { type: 'plain_text', text: '締め切り日時' },
             },
@@ -185,7 +244,7 @@ function buildScheduleModalView(channelId, mode = 'period', currentValues = {}, 
                 text: { type: 'plain_text', text: '🕐 時間枠' },
             },
             buildModeSelectBlock(mode),
-            buildTimeSlotSelectBlock(mode, renderCount, showDefaults),
+            buildTimeSlotSelectBlock(mode, renderCount, showDefaults, isInitialRender ? channelSettings : undefined),
             buildClearButtonBlock(),
             { type: 'divider' },
 
@@ -206,10 +265,9 @@ function buildScheduleModalView(channelId, mode = 'period', currentValues = {}, 
                         { text: { type: 'plain_text', text: '3時間前' }, value: '3' },
                         { text: { type: 'plain_text', text: '1時間前' }, value: '1' },
                     ],
-                    initial_options: [
-                        { text: { type: 'plain_text', text: '24時間前' }, value: '24' },
-                        { text: { type: 'plain_text', text: '1時間前' }, value: '1' },
-                    ],
+                    initial_options: initialRemindHours.map(hourStr => ({
+                        text: { type: 'plain_text', text: `${hourStr}時間前` }, value: hourStr
+                    })),
                 },
                 label: { type: 'plain_text', text: 'リマインド通知（複数選択可）' },
             },
@@ -229,14 +287,30 @@ function buildScheduleModalView(channelId, mode = 'period', currentValues = {}, 
                             value: 'include_teacher',
                         },
                     ],
-                    initial_options: [
-                        {
-                            text: { type: 'plain_text', text: '予定を考慮（Google Calendar連携）' },
-                            value: 'include_teacher',
-                        },
-                    ],
+                    ...(initialIncludeTeacher ? {
+                        initial_options: [
+                            {
+                                text: { type: 'plain_text', text: '予定を考慮（Google Calendar連携）' },
+                                value: 'include_teacher',
+                            },
+                        ],
+                    } : {})
                 },
                 label: { type: 'plain_text', text: '🎓 先生の予定' },
+            },
+            { type: 'divider' },
+
+            // ===== 設定の保存 =====
+            {
+                type: 'input',
+                block_id: 'save_default_block',
+                optional: true,
+                element: {
+                    type: 'checkboxes',
+                    action_id: 'save_default',
+                    options: saveDefaultOptions,
+                },
+                label: { type: 'plain_text', text: '設定のロック' },
             },
         ],
     };

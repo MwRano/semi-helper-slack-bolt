@@ -5,6 +5,37 @@
 const schedules = new Map();
 
 /**
+ * チャンネルごとの設定データ（デフォルト値）のストア
+ */
+const channelSettings = new Map();
+
+/**
+ * チャンネルごとの設定を保存
+ * @param {string} channelId 
+ * @param {Object} settings 
+ */
+function saveChannelSettings(channelId, settings) {
+    channelSettings.set(channelId, settings);
+}
+
+/**
+ * チャンネルごとの設定を取得
+ * @param {string} channelId 
+ * @returns {Object|undefined}
+ */
+function getChannelSettings(channelId) {
+    return channelSettings.get(channelId);
+}
+
+/**
+ * チャンネルごとの設定をクリア（デフォルトに戻す）
+ * @param {string} channelId 
+ */
+function clearChannelSettings(channelId) {
+    channelSettings.delete(channelId);
+}
+
+/**
  * スケジュールを保存
  * @param {string} id - スケジュールID
  * @param {Object} data - スケジュールデータ
@@ -170,4 +201,7 @@ module.exports = {
     markOverdueRemindedDay,
     addRemindMessage,
     popRemindMessages,
+    saveChannelSettings,
+    getChannelSettings,
+    clearChannelSettings,
 };
