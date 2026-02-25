@@ -197,6 +197,10 @@ function generatePDF(scheduleId, busySlots = {}) {
         }
     }
 
+    const uniqueScores = [...new Set(slotDataList.map(d => d.score))]
+        .filter(s => s >= 0)
+        .sort((a, b) => b - a);
+
     const bodyData = [];
     for (const data of slotDataList) {
         const row = [];
@@ -213,10 +217,6 @@ function generatePDF(scheduleId, busySlots = {}) {
             else if (state === 'maybe') row.push('-');
             else row.push('X');
         });
-
-        const uniqueScores = [...new Set(slotDataList.map(d => d.score))]
-            .filter(s => s >= 0)
-            .sort((a, b) => b - a);
 
         let totalText = `${data.availableCount}`;
         if (data.score > 0) {
@@ -238,7 +238,21 @@ function generatePDF(scheduleId, busySlots = {}) {
         head: [headers],
         body: bodyData,
         theme: 'grid',
-        styles: { fontStyle: 'normal' }
+        styles: { fontStyle: 'normal' },
+        didParseCell: function (data) {
+            if (data.section === 'body') {
+                const rowScore = slotDataList[data.row.index].score;
+                if (rowScore > 0) {
+                    if (rowScore === uniqueScores[0]) {
+                        data.cell.styles.fillColor = [100, 200, 100]; // 1st (かなり濃い緑)
+                    } else if (uniqueScores.length > 1 && rowScore === uniqueScores[1]) {
+                        data.cell.styles.fillColor = [160, 220, 160]; // 2nd (中くらいの緑)
+                    } else if (uniqueScores.length > 2 && rowScore === uniqueScores[2]) {
+                        data.cell.styles.fillColor = [220, 240, 220]; // 3rd (薄い緑)
+                    }
+                }
+            }
+        }
     });
 
     // 備考欄をPDFの末尾に追加
