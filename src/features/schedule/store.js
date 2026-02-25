@@ -28,6 +28,14 @@ function getChannelSettings(channelId) {
 }
 
 /**
+ * チャンネルごとの設定をクリア（デフォルトに戻す）
+ * @param {string} channelId 
+ */
+function clearChannelSettings(channelId) {
+    channelSettings.delete(channelId);
+}
+
+/**
  * スケジュールを保存
  * @param {string} id - スケジュールID
  * @param {Object} data - スケジュールデータ
@@ -195,4 +203,5 @@ module.exports = {
     popRemindMessages,
     saveChannelSettings,
     getChannelSettings,
+    clearChannelSettings,
 };

@@ -124,6 +124,4 @@ const openResponseModalAction = async ({ ack, body, client, logger }) => {
     }
 };
 
-
-
 module.exports = { openModalAction, switchModeAction, clearTimeSlotsAction, openResponseModalAction };

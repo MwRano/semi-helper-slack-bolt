@@ -162,6 +162,20 @@ function buildScheduleModalView(channelId, mode = 'period', currentValues = {}, 
         if (currentValues.includeTeacher !== undefined) initialIncludeTeacher = currentValues.includeTeacher;
     }
 
+    const saveDefaultOptions = [
+        {
+            text: { type: 'plain_text', text: '📝 この「期間/締め切り/時間枠/通知/先生の予定」を次回のデフォルト値として保存する' },
+            value: 'save_as_default',
+        }
+    ];
+
+    if (channelSettings) {
+        saveDefaultOptions.push({
+            text: { type: 'plain_text', text: '🔄 保存されたデフォルト設定を削除し、システム標準に戻す' },
+            value: 'reset_default',
+        });
+    }
+
     return {
         type: 'modal',
         callback_id: 'schedule_adjustment_modal',
@@ -294,12 +308,7 @@ function buildScheduleModalView(channelId, mode = 'period', currentValues = {}, 
                 element: {
                     type: 'checkboxes',
                     action_id: 'save_default',
-                    options: [
-                        {
-                            text: { type: 'plain_text', text: '📝 この「期間/締め切り/時間枠/通知/先生の予定」を次回のデフォルト値として保存する' },
-                            value: 'save_as_default',
-                        },
-                    ],
+                    options: saveDefaultOptions,
                 },
                 label: { type: 'plain_text', text: '設定のロック' },
             },

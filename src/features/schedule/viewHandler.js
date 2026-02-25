@@ -1,4 +1,4 @@
-const { saveSchedule, generateScheduleId, updateScheduleThreadTs, saveChannelMentionTs, getAllSchedules, markAsClosed, saveChannelSettings } = require('./store');
+const { saveSchedule, generateScheduleId, updateScheduleThreadTs, saveChannelMentionTs, getAllSchedules, markAsClosed, saveChannelSettings, clearChannelSettings } = require('./store');
 
 /**
  * 日程調整モーダル送信時のハンドラー
@@ -33,8 +33,12 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
 
         const saveDefaultOptions = values.save_default_block?.save_default?.selected_options || [];
         const shouldSaveDefault = saveDefaultOptions.some(opt => opt.value === 'save_as_default');
+        const shouldResetDefault = saveDefaultOptions.some(opt => opt.value === 'reset_default');
 
-        if (shouldSaveDefault) {
+        if (shouldResetDefault) {
+            clearChannelSettings(channel);
+            logger.info(`🧹 チャンネル(${channel})のデフォルト設定をリセットしました。`);
+        } else if (shouldSaveDefault) {
             // 現在日時からの差分を計算してデフォルト値として保存
             const now = new Date();
             const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
