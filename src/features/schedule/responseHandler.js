@@ -124,7 +124,7 @@ const responseHandler = async ({ ack, body, view, client, logger }) => {
                                 thread_ts: schedule.threadTs,
                                 file: pdfBuffer,
                                 filename: `schedule_result.pdf`,
-                                title: '📅 日程調整 結果一覧 (PDF)',
+                                title: '📅 ゼミ日程調整 結果一覧 (PDF)',
                                 initial_comment: initialComment
                             });
                         } catch (uploadErr) {
@@ -164,7 +164,7 @@ const responseHandler = async ({ ack, body, view, client, logger }) => {
                                     type: 'header',
                                     text: {
                                         type: 'plain_text',
-                                        text: '📅 日程調整',
+                                        text: '📅 ゼミ日程調整',
                                     },
                                 },
                                 {
@@ -184,7 +184,7 @@ const responseHandler = async ({ ack, body, view, client, logger }) => {
                                     ],
                                 },
                             ],
-                            text: '📅 日程調整の受付が終了しました',
+                            text: '📅 ゼミ日程調整の受付が終了しました',
                         });
                     } catch (updateErr) {
                         logger.warn('親メッセージの更新（ボタン無効化）に失敗しました:', updateErr);

@@ -131,7 +131,7 @@ function buildClearButtonBlock() {
 }
 
 /**
- * 日程調整モーダルのビュー定義を生成
+ * ゼミ日程調整モーダルのビュー定義を生成
  * @param {string} channelId - チャンネルID
  * @param {string} mode - 'period' | 'time'
  * @param {Object} currentValues - 現在の入力値（モーダル更新時に保持するため）
@@ -182,7 +182,7 @@ function buildScheduleModalView(channelId, mode = 'period', currentValues = {}, 
         private_metadata: JSON.stringify({ channel: channelId, mode, renderCount, messageTs }),
         title: {
             type: 'plain_text',
-            text: '📅 日程調整',
+            text: '📅 ゼミ日程調整',
         },
         submit: {
             type: 'plain_text',
@@ -193,10 +193,10 @@ function buildScheduleModalView(channelId, mode = 'period', currentValues = {}, 
             text: 'キャンセル',
         },
         blocks: [
-            // ===== 日程調整期間 =====
+            // ===== ゼミ日程調整期間 =====
             {
                 type: 'header',
-                text: { type: 'plain_text', text: '📆 日程調整期間' },
+                text: { type: 'plain_text', text: '📆 ゼミ日程調整期間' },
             },
             {
                 type: 'input',

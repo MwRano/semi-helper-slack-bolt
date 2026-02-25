@@ -1,13 +1,13 @@
 const { getChannelSettings } = require('./store');
 
 /**
- * 「日程調整」を含むメッセージを受信したときのハンドラー
+ * 「ゼミ日程調整」を含むメッセージを受信したときのハンドラー
  * → ボタン付きメッセージを返す（ボタンクリックでモーダルを開く）
  */
 const messageHandler = async ({ message, say, logger }) => {
     try {
         logger.info('========================================');
-        logger.info('📅 日程調整コマンドを受信しました');
+        logger.info('📅 ゼミ日程調整コマンドを受信しました');
         logger.info(`  ユーザー: ${message.user}`);
         logger.info(`  チャンネル: ${message.channel}`);
         logger.info('========================================');
@@ -40,7 +40,7 @@ const messageHandler = async ({ message, say, logger }) => {
                     type: 'section',
                     text: {
                         type: 'mrkdwn',
-                        text: `<@${message.user}> 下記のボタンを押して日程調整フォームを作成してください。`,
+                        text: `<@${message.user}> 下記のボタンを押してゼミ日程調整フォームを作成してください。`,
                     },
                 },
                 {
@@ -48,7 +48,7 @@ const messageHandler = async ({ message, say, logger }) => {
                     elements: [
                         {
                             type: 'button',
-                            text: { type: 'plain_text', text: '📅 日程調整フォーム作成' },
+                            text: { type: 'plain_text', text: '📅 ゼミ日程調整フォーム作成' },
                             action_id: 'open_schedule_modal',
                             style: 'primary',
                         },
@@ -64,7 +64,7 @@ const messageHandler = async ({ message, say, logger }) => {
                     ],
                 },
             ],
-            text: '📅 日程調整を開始します',
+            text: '📅 ゼミ日程調整を開始します',
         });
     } catch (error) {
         logger.error('メッセージの送信に失敗しました:', error);
