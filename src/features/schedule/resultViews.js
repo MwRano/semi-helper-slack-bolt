@@ -31,11 +31,18 @@ function getWeekdaysBetween(startDateStr, endDateStr) {
 }
 
 /**
- * 時間枠の短縮ラベルを取得
+ * 時間枠の短縮ラベルを取得（PDF表示用）
  */
 function getShortLabel(slotText) {
+    // 期間指定モード（例: "1限（9:00〜10:30）"）の場合、カッコ以降を削除
     const parenIdx = slotText.indexOf('（');
     if (parenIdx > 0) return slotText.substring(0, parenIdx);
+
+    // 時間指定モード（例: "09:00 〜 10:00"）の場合、スペースを詰め、チルダをハイフンにしてスッキリさせる
+    if (slotText.includes('〜')) {
+        return slotText.replace(/\s+/g, '').replace('〜', '-');
+    }
+
     return slotText;
 }
 
