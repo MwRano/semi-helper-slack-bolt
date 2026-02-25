@@ -106,12 +106,11 @@ const responseHandler = async ({ ack, body, view, client, logger }) => {
 
                     // スレッド上で作成者にメンションし、ファイル自体をアップロードする
                     try {
-                        const { generateCSV, generatePDF } = require('./resultViews');
+                        const { generatePDF } = require('./resultViews');
                         const { getBusySlots } = require('./googleCalendarService');
                         const busySlots = schedule.includeTeacher !== false
                             ? await getBusySlots(schedule.startDate, schedule.endDate, schedule.timeSlots)
                             : {};
-                        const csvContent = generateCSV(scheduleId, busySlots);
                         const { pdfBuffer, notes } = generatePDF(scheduleId, busySlots);
 
                         let initialComment = `<@${schedule.creatorId}> 対象メンバー全員（${members.length}名）の回答が完了しました！\nこちらのPDFで結果一覧の表をご確認いただけます。`;
@@ -127,14 +126,6 @@ const responseHandler = async ({ ack, body, view, client, logger }) => {
                                 filename: `schedule_result.pdf`,
                                 title: '📅 日程調整 結果一覧 (PDF)',
                                 initial_comment: initialComment
-                            });
-
-                            await client.files.uploadV2({
-                                channel_id: schedule.channelId,
-                                thread_ts: schedule.threadTs,
-                                content: "\uFEFF" + csvContent, // BOMを追加してExcelでの文字化けを防止
-                                filename: `schedule_result.csv`,
-                                title: '📅 日程調整 結果一覧 (CSV)'
                             });
                         } catch (uploadErr) {
                             logger.warn('ファイルアップロード(V2)に失敗しました', uploadErr);
