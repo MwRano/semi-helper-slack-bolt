@@ -71,10 +71,14 @@ const responseHandler = async ({ ack, body, view, client, logger }) => {
         logger.info('========================================');
 
         // チャンネルに通知
+        let notifyText = `✅ *${displayName}* が日程を回答しました（🟢${counts.available} 🟡${counts.maybe} 🔴${counts.unavailable}）`;
+        if (note) {
+            notifyText += `\n📝 *備考:* ${note}`;
+        }
         await client.chat.postMessage({
             channel: schedule.channelId,
             thread_ts: schedule.threadTs,
-            text: `✅ *${displayName}* が日程を回答しました（🟢${counts.available} 🟡${counts.maybe} 🔴${counts.unavailable}）`,
+            text: notifyText,
         });
 
         // 全員が回答したかチェック
