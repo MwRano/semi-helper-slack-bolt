@@ -123,8 +123,8 @@ const responseHandler = async ({ ack, body, view, client, logger }) => {
                                 channel_id: schedule.channelId,
                                 thread_ts: schedule.threadTs,
                                 file: pdfBuffer,
-                                filename: `schedule_result.pdf`,
-                                title: '📅 ゼミ日程調整 結果一覧 (PDF)',
+                                filename: `schedule_result_${schedule.startDate}_${schedule.endDate}.pdf`,
+                                title: `📅 ゼミ日程調整 結果一覧 (${schedule.startDate} 〜 ${schedule.endDate})`,
                                 initial_comment: initialComment
                             });
                         } catch (uploadErr) {
