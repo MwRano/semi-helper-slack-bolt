@@ -94,8 +94,8 @@ function startDeadlineChecker(app) {
 
                                 for (const userId of unrespondedMembers) {
                                     const textMessage = overdueDays === 0
-                                        ? `⚠️ *未回答リマインド*\n<@${userId}>\n日程調整の締め切りを過ぎました。\n<${permalink}|こちらのメッセージ>から日程のご回答をお願いします🙏`
-                                        : `⚠️ *未回答リマインド*\n<@${userId}>\n日程調整の締め切りを過ぎています（${overdueDays}日経過）。\n<${permalink}|こちらのメッセージ>から日程のご回答をお願いします🙏`;
+                                        ? `⚠️ *未回答リマインド*\n<@${userId}>\nゼミ日程調整の締め切りを過ぎました。\n<${permalink}|こちらのメッセージ>から日程のご回答をお願いします🙏`
+                                        : `⚠️ *未回答リマインド*\n<@${userId}>\nゼミ日程調整の締め切りを過ぎています（${overdueDays}日経過）。\n<${permalink}|こちらのメッセージ>から日程のご回答をお願いします🙏`;
 
                                     const res = await app.client.chat.postMessage({
                                         channel: userId,

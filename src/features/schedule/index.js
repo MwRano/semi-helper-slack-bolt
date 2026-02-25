@@ -5,7 +5,7 @@ const { responseHandler } = require('./responseHandler');
 const { startDeadlineChecker } = require('./scheduler');
 
 /**
- * 日程調整機能のリスナーを登録
+ * ゼミ日程調整機能のリスナーを登録
  * @param {import('@slack/bolt').App} app
  */
 function registerScheduleFeature(app) {

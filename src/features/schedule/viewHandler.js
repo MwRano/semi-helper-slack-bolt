@@ -1,7 +1,7 @@
 const { saveSchedule, generateScheduleId, updateScheduleThreadTs, saveChannelMentionTs, getAllSchedules, markAsClosed, saveChannelSettings, clearChannelSettings } = require('./store');
 
 /**
- * 日程調整モーダル送信時のハンドラー
+ * ゼミ日程調整モーダル送信時のハンドラー
  * → 入力値を保存し、チャンネルに通知する
  */
 const viewHandler = async ({ ack, body, view, client, logger }) => {
@@ -101,7 +101,7 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
         });
 
         logger.info('========================================');
-        logger.info('📅 日程調整が作成されました');
+        logger.info('📅 ゼミ日程調整が作成されました');
         logger.info(`  スケジュールID: ${scheduleId}`);
         logger.info(`  作成者: ${userId} (${creatorName})`);
         logger.info(`  調整期間: ${startDate} 〜 ${endDate}`);
@@ -109,7 +109,7 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
         logger.info(`  時間枠: ${timeSlots.map((o) => o.text.text).join(', ')}`);
         logger.info('========================================');
 
-        // 同じチャンネルにある未完了の過去の日程調整フォームを強制終了する
+        // 同じチャンネルにある未完了の過去のゼミ日程調整フォームを強制終了する
         const allSchedules = getAllSchedules();
         for (const [oldId, oldSchedule] of allSchedules.entries()) {
             if (oldId !== scheduleId && oldSchedule.channelId === channel && !oldSchedule.resultPosted && !oldSchedule.isClosed) {
@@ -127,7 +127,7 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
                             blocks: [
                                 {
                                     type: 'header',
-                                    text: { type: 'plain_text', text: '📅 日程調整' },
+                                    text: { type: 'plain_text', text: '📅 ゼミ日程調整' },
                                 },
                                 {
                                     type: 'section',
@@ -138,14 +138,14 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
                                     elements: [
                                         {
                                             type: 'mrkdwn',
-                                            text: `⚠️ 新しい日程調整が作成されたため、このフォームの受付は自動終了しました。`,
+                                            text: `⚠️ 新しいゼミ日程調整が作成されたため、このフォームの受付は自動終了しました。`,
                                         },
                                     ],
                                 },
                             ],
-                            text: '📅 日程調整の受付が終了しました',
+                            text: '📅 ゼミ日程調整の受付が終了しました',
                         });
-                        logger.info(`🔄 古い日程調整 (${oldId}) のボタンを自動無効化しました`);
+                        logger.info(`🔄 古いゼミ日程調整 (${oldId}) のボタンを自動無効化しました`);
 
                         // チャンネルメンション（リマインド用）があれば削除
                         if (oldSchedule.channelMentionTs) {
@@ -160,7 +160,7 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
                         }
 
                     } catch (updateErr) {
-                        logger.error(`古い日程調整のメッセージ更新に失敗しました (${oldId}):`, updateErr);
+                        logger.error(`古いゼミ日程調整のメッセージ更新に失敗しました (${oldId}):`, updateErr);
                     }
                 }
                 markAsClosed(oldId);
@@ -170,7 +170,7 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
         // @channel メンション（スレッドとは分離して通知のみ）
         const channelMentionMsg = await client.chat.postMessage({
             channel: channel,
-            text: `<!channel> 日程調整は下記からお願いします🙏`,
+            text: `<!channel> ゼミ日程調整は下記からお願いします🙏`,
         });
 
         // チャンネルにスレッド親メッセージを投稿
@@ -181,7 +181,7 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
                     type: 'header',
                     text: {
                         type: 'plain_text',
-                        text: '📅 日程調整',
+                        text: '📅 ゼミ日程調整',
                     },
                 },
                 {
@@ -206,7 +206,7 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
                     ],
                 },
             ],
-            text: `📅 日程調整が作成されました（${startDate} 〜 ${endDate}）`,
+            text: `📅 ゼミ日程調整が作成されました（${startDate} 〜 ${endDate}）`,
         });
 
         // スレッドのtsを保存
@@ -231,19 +231,19 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
                             elements: [
                                 {
                                     type: 'mrkdwn',
-                                    text: `✅ ${creatorName} によって日程調整フォームが作成されました。`,
+                                    text: `✅ ${creatorName} によってゼミ日程調整フォームが作成されました。`,
                                 },
                             ],
                         },
                     ],
-                    text: '📅 日程調整が作成されました',
+                    text: '📅 ゼミ日程調整が作成されました',
                 });
             } catch (updateError) {
                 logger.warn('元のメッセージの更新に失敗しました:', updateError);
             }
         }
     } catch (error) {
-        logger.error('日程調整の通知に失敗しました:', error);
+        logger.error('ゼミ日程調整の通知に失敗しました:', error);
     }
 };
 

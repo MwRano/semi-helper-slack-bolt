@@ -5,7 +5,7 @@ const { getBusySlots } = require('./googleCalendarService');
 const { config } = require('../../config/index');
 
 /**
- * 「日程調整を設定する」ボタンクリック時のハンドラー
+ * 「ゼミ日程調整を設定する」ボタンクリック時のハンドラー
  */
 const openModalAction = async ({ ack, body, client, logger }) => {
     await ack();
@@ -22,7 +22,7 @@ const openModalAction = async ({ ack, body, client, logger }) => {
             view: buildScheduleModalView(channelId, initialMode, {}, 0, true, messageTs),
         });
 
-        logger.info('📅 日程調整モーダルを表示しました');
+        logger.info('📅 ゼミ日程調整モーダルを表示しました');
     } catch (error) {
         logger.error('モーダルの表示に失敗しました:', error);
     }
