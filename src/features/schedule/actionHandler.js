@@ -1,7 +1,8 @@
 const { buildScheduleModalView } = require('./views');
 const { buildResponseModalView } = require('./responseViews');
-const { getSchedule } = require('./store');
+const { getSchedule, getChannelSettings } = require('./store');
 const { getBusySlots } = require('./googleCalendarService');
+const { config } = require('../../config/index');
 
 /**
  * 「日程調整を設定する」ボタンクリック時のハンドラー
@@ -13,9 +14,12 @@ const openModalAction = async ({ ack, body, client, logger }) => {
         const channelId = body.channel.id;
         const messageTs = body.message?.ts;
 
+        const savedSettings = getChannelSettings(channelId) || {};
+        const initialMode = savedSettings.mode || config.timeSlot.mode || 'period';
+
         await client.views.open({
             trigger_id: body.trigger_id,
-            view: buildScheduleModalView(channelId, 'period', {}, 0, true, messageTs),
+            view: buildScheduleModalView(channelId, initialMode, {}, 0, true, messageTs),
         });
 
         logger.info('📅 日程調整モーダルを表示しました');
@@ -32,6 +36,8 @@ function extractCurrentValues(values) {
         startDate: values.start_date_block?.start_date?.selected_date,
         endDate: values.end_date_block?.end_date?.selected_date,
         deadline: values.deadline_block?.deadline?.selected_date_time,
+        remindHours: values.remind_hours_block?.remind_hours?.selected_options?.map(opt => opt.value),
+        includeTeacher: values.include_teacher_block?.include_teacher?.selected_options?.some(opt => opt.value === 'include_teacher'),
     };
 }
 
