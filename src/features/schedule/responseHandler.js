@@ -112,7 +112,12 @@ const responseHandler = async ({ ack, body, view, client, logger }) => {
                             ? await getBusySlots(schedule.startDate, schedule.endDate, schedule.timeSlots)
                             : {};
                         const csvContent = generateCSV(scheduleId, busySlots);
-                        const pdfBuffer = generatePDF(scheduleId, busySlots);
+                        const { pdfBuffer, notes } = generatePDF(scheduleId, busySlots);
+
+                        let initialComment = `<@${schedule.creatorId}> 対象メンバー全員（${members.length}名）の回答が完了しました！\nこちらのPDFで結果一覧の表をご確認いただけます。`;
+                        if (notes && notes.length > 0) {
+                            initialComment += `\n\n*📝 備考まとめ*\n${notes.join('\n')}`;
+                        }
 
                         try {
                             await client.files.uploadV2({
@@ -121,7 +126,7 @@ const responseHandler = async ({ ack, body, view, client, logger }) => {
                                 file: pdfBuffer,
                                 filename: `schedule_result.pdf`,
                                 title: '📅 日程調整 結果一覧 (PDF)',
-                                initial_comment: `<@${schedule.creatorId}> 対象メンバー全員（${members.length}名）の回答が完了しました！\nこちらのPDFで結果一覧の表をご確認いただけます。`
+                                initial_comment: initialComment
                             });
 
                             await client.files.uploadV2({

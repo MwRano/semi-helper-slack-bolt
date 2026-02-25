@@ -275,23 +275,15 @@ function generatePDF(scheduleId, busySlots = {}) {
         }
     });
 
-    // 備考欄をPDFの末尾に追加
+    // 備考欄はPDF内には書き込まず、Slackメッセージとして送信するために配列で返す
     const notes = userIds
         .filter(uid => responses[uid]?.note)
-        .map(uid => `${responses[uid]?.displayName || uid}: ${responses[uid].note}`);
+        .map(uid => `*${responses[uid]?.displayName || uid}:* ${responses[uid].note}`);
 
-    if (notes.length > 0) {
-        let finalY = doc.lastAutoTable.finalY || 20;
-        doc.text("Notes:", 14, finalY + 10);
-        let noteY = finalY + 16;
-        notes.forEach(note => {
-            doc.text(note, 14, noteY);
-            noteY += 6;
-        });
-    }
-
-    // ArrayBufferをBufferに変換して返す
-    return Buffer.from(doc.output('arraybuffer'));
+    return {
+        pdfBuffer: Buffer.from(doc.output('arraybuffer')),
+        notes: notes
+    };
 }
 
 module.exports = { generateCSV, generatePDF };
