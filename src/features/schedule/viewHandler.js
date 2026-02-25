@@ -1,4 +1,4 @@
-const { saveSchedule, generateScheduleId, updateScheduleThreadTs, saveChannelMentionTs, getAllSchedules, markAsClosed } = require('./store');
+const { saveSchedule, generateScheduleId, updateScheduleThreadTs, saveChannelMentionTs, getAllSchedules, markAsClosed, saveChannelSettings } = require('./store');
 
 /**
  * 日程調整モーダル送信時のハンドラー
@@ -27,6 +27,36 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
 
         const userId = body.user.id;
         const { channel, messageTs } = JSON.parse(view.private_metadata);
+
+        // モードの取得
+        const selectedMode = values.time_slot_mode_block?.time_slot_mode?.selected_option?.value || 'period';
+
+        const saveDefaultOptions = values.save_default_block?.save_default?.selected_options || [];
+        const shouldSaveDefault = saveDefaultOptions.some(opt => opt.value === 'save_as_default');
+
+        if (shouldSaveDefault) {
+            // 現在日時からの差分を計算してデフォルト値として保存
+            const now = new Date();
+            const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            const todayParsed = new Date(`${todayStr}T00:00:00`);
+            const startParsed = new Date(`${startDate}T00:00:00`);
+            const endParsed = new Date(`${endDate}T00:00:00`);
+
+            const startOffsetDays = Math.round((startParsed.getTime() - todayParsed.getTime()) / (1000 * 60 * 60 * 24));
+            const endOffsetDays = Math.round((endParsed.getTime() - todayParsed.getTime()) / (1000 * 60 * 60 * 24));
+            const deadLineOffsetHours = Math.round((deadline * 1000 - Date.now()) / (1000 * 60 * 60));
+
+            saveChannelSettings(channel, {
+                mode: selectedMode,
+                timeSlots: timeSlots.map(opt => opt.value),
+                remindHours: remindHours.map(String),
+                includeTeacher,
+                startOffsetDays,
+                endOffsetDays,
+                deadLineOffsetHours
+            });
+            logger.info(`💾 チャンネル(${channel})のデフォルト設定を保存しました。 (start+${startOffsetDays}d, end+${endOffsetDays}d, deadline+${deadLineOffsetHours}h)`);
+        }
 
         // 時間枠を見やすい文字列に変換
         const timeSlotsText = timeSlots.map((opt) => opt.text.text).join('\n• ');
