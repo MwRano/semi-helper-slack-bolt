@@ -1,4 +1,6 @@
 const { getSchedule } = require('./store');
+const { jsPDF } = require("jspdf");
+const autoTable = require("jspdf-autotable").default || require("jspdf-autotable");
 
 const WEEKDAYS_JA = ['日', '月', '火', '水', '木', '金', '土'];
 
@@ -38,30 +40,33 @@ function getShortLabel(slotText) {
 }
 
 
+
+
 /**
- * 結果をCSV形式の文字列で取得
+ * 結果をPDFのBufferとして取得
  */
-function generateCSV(scheduleId, busySlots = {}) {
+function generatePDF(scheduleId, busySlots = {}) {
     const schedule = getSchedule(scheduleId);
-    if (!schedule) return '';
+    if (!schedule) return null;
 
     const { startDate, endDate, timeSlots, responses } = schedule;
     const weekdays = getWeekdaysBetween(startDate, endDate);
     const userIds = Object.keys(responses);
-
     const hasBusy = Object.keys(busySlots).length > 0;
 
+    const doc = new jsPDF();
+
+    doc.setFontSize(14);
+    doc.text("Schedule Result", 14, 15);
+
     // ヘッダー行を作成
-    const headers = ['日付', '時間枠'];
-    if (hasBusy) headers.push('先生');
+    const headers = ['Date', 'Time'];
+    if (hasBusy) headers.push('Teacher');
 
     // メンバー名を追加
     const memberNames = userIds.map((uid) => responses[uid]?.displayName || uid);
-    headers.push(...memberNames, '◯の合計');
+    headers.push(...memberNames, 'Total');
 
-    const csvLines = [headers.join(',')];
-
-    // まず全日程のスコアを計算して、最大スコアを求める
     let maxScore = -1;
     const slotDataList = [];
 
@@ -77,7 +82,6 @@ function generateCSV(scheduleId, busySlots = {}) {
                 }
             });
 
-            // スコア：先生NGは事実上候補外(-100)。それ以外は出席可能人数
             const score = isBusy ? -100 : availableCount;
             if (score > maxScore) maxScore = score;
 
@@ -85,67 +89,93 @@ function generateCSV(scheduleId, busySlots = {}) {
         }
     }
 
-    // CSVの各行を生成
+    const uniqueScores = [...new Set(slotDataList.map(d => d.score))]
+        .filter(s => s >= 0)
+        .sort((a, b) => b - a);
+
+    const bodyData = [];
+    let lastDateStr = null;
+    let dateCellMap = {};
+
     for (const data of slotDataList) {
         const row = [];
 
-        // 日付と時間枠
-        row.push(data.day.label);
-        row.push(getShortLabel(data.slot.text.text));
-
-        // 先生の都合
-        if (hasBusy) {
-            row.push(data.isBusy ? '👨‍🏫' : '🟢');
+        // 日付の変わり目でセルを結合（rowSpan）して境目を強調
+        if (data.day.dateStr !== lastDateStr) {
+            lastDateStr = data.day.dateStr;
+            const dateCell = {
+                content: data.day.dateStr,
+                rowSpan: 1,
+                styles: { valign: 'middle', halign: 'center', fillColor: [240, 240, 240], fontStyle: 'bold' }
+            };
+            row.push(dateCell);
+            dateCellMap[data.day.dateStr] = dateCell;
+        } else {
+            dateCellMap[data.day.dateStr].rowSpan++;
         }
 
-        // 各メンバーの回答状態
+        row.push(getShortLabel(data.slot.text.text));
+
+        if (hasBusy) {
+            row.push(data.isBusy ? 'NG' : 'OK');
+        }
+
         userIds.forEach(uid => {
             const state = responses[uid]?.slots?.[data.slotKey] || 'unavailable';
-            if (state === 'available') row.push('🟢');
-            else if (state === 'maybe') row.push('🟡');
-            else row.push('🔴');
+            if (state === 'available') row.push('O');
+            else if (state === 'maybe') row.push('-');
+            else row.push('X');
         });
 
-        // 順位付けのロジック（スコアの高い順に1位〜3位まで）
-        const uniqueScores = [...new Set(slotDataList.map(d => d.score))]
-            .filter(s => s >= 0) // 先生NG(-100)や誰もいない日(0を除く場合は >0)などは除外する場合は調整
-            .sort((a, b) => b - a);
-
-        let totalText = `${data.availableCount} 名`;
-
-        // 候補外（先生NG または 誰も参加できない）でない場合
+        let totalText = `${data.availableCount}`;
         if (data.score > 0) {
-            if (data.score === uniqueScores[0]) {
-                totalText += ' 🥇 ';
-            } else if (uniqueScores.length > 1 && data.score === uniqueScores[1]) {
-                totalText += ' 🥈 ';
-            } else if (uniqueScores.length > 2 && data.score === uniqueScores[2]) {
-                totalText += ' 🥉 ';
-            }
+            if (data.score === uniqueScores[0]) totalText += ' (1st)';
+            else if (uniqueScores.length > 1 && data.score === uniqueScores[1]) totalText += ' (2nd)';
+            else if (uniqueScores.length > 2 && data.score === uniqueScores[2]) totalText += ' (3rd)';
 
-            // 全員参加できる場合はさらにアピール
             if (data.availableCount === userIds.length && userIds.length > 0) {
-                totalText += ' ✨ ';
+                totalText += ' *ALL OK*';
             }
         }
 
         row.push(totalText);
-        csvLines.push(row.join(','));
+        bodyData.push(row);
     }
 
-    // 備考欄をCSVの末尾に追加
+    autoTable(doc, {
+        startY: 20,
+        head: [headers],
+        body: bodyData,
+        theme: 'grid',
+        styles: { fontStyle: 'normal' },
+        didParseCell: function (data) {
+            if (data.section === 'body') {
+                // 日付列はグレーの結合セルのままにするためスキップ
+                if (data.column.index === 0) return;
+
+                const rowScore = slotDataList[data.row.index].score;
+                if (rowScore > 0) {
+                    if (rowScore === uniqueScores[0]) {
+                        data.cell.styles.fillColor = [100, 200, 100]; // 1st (かなり濃い緑)
+                    } else if (uniqueScores.length > 1 && rowScore === uniqueScores[1]) {
+                        data.cell.styles.fillColor = [160, 220, 160]; // 2nd (中くらいの緑)
+                    } else if (uniqueScores.length > 2 && rowScore === uniqueScores[2]) {
+                        data.cell.styles.fillColor = [220, 240, 220]; // 3rd (薄い緑)
+                    }
+                }
+            }
+        }
+    });
+
+    // 備考欄はPDF内には書き込まず、Slackメッセージとして送信するために配列で返す
     const notes = userIds
         .filter(uid => responses[uid]?.note)
-        .map(uid => `"${responses[uid]?.displayName || uid}","${responses[uid].note.replace(/"/g, '""')}"`);
+        .map(uid => `*${responses[uid]?.displayName || uid}:* ${responses[uid].note}`);
 
-    if (notes.length > 0) {
-        csvLines.push(''); // 空行
-        csvLines.push('【備考（コメント）】');
-        csvLines.push('回答者,内容');
-        csvLines.push(...notes);
-    }
-
-    return csvLines.join('\n');
+    return {
+        pdfBuffer: Buffer.from(doc.output('arraybuffer')),
+        notes: notes
+    };
 }
 
-module.exports = { generateCSV };
+module.exports = { generatePDF };
