@@ -34,8 +34,8 @@ function getWeekdaysBetween(startDateStr, endDateStr) {
  * 時間枠の短縮ラベルを取得
  */
 function getShortLabel(slotText) {
-    const parenIdx = slotText.indexOf('（');
-    if (parenIdx > 0) return slotText.substring(0, parenIdx);
+    const parenMatch = slotText.match(/^(.*?)(?:（|\()/);
+    if (parenMatch) return parenMatch[1].trim();
     return slotText;
 }
 
