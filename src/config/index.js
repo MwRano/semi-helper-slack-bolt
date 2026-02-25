@@ -53,6 +53,12 @@ const config = {
             defaults: ['0900-1000', '1000-1100', '1300-1400', '1400-1500'],
         },
     },
+
+    defaults: {
+        deadLineOffsetHours: 48,
+        remindHours: ["24", "1"],
+        includeTeacher: true
+    }
 };
 
 module.exports = { config };
