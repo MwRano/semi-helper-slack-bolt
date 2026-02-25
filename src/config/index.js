@@ -1,5 +1,27 @@
 require('dotenv').config();
 
+const defaultPeriodSlots = [
+    { label: '1限（9:00〜10:30）', value: '1' },
+    { label: '2限（10:40〜12:10）', value: '2' },
+    { label: '3限（13:00〜14:30）', value: '3' },
+    { label: '4限（14:40〜16:10）', value: '4' },
+    { label: '5限（16:20〜17:50）', value: '5' },
+];
+
+let periodSlots = defaultPeriodSlots;
+if (process.env.CUSTOM_PERIOD_SLOTS) {
+    periodSlots = process.env.CUSTOM_PERIOD_SLOTS.split(',').map((label, i) => ({
+        label: label.trim(),
+        value: String(i + 1),
+    }));
+}
+
+const defaultPeriodDefaults = ['1', '2', '3', '4'];
+let periodDefaults = defaultPeriodDefaults;
+if (process.env.CUSTOM_PERIOD_DEFAULTS) {
+    periodDefaults = process.env.CUSTOM_PERIOD_DEFAULTS.split(',').map(s => s.trim());
+}
+
 const config = {
     slack: {
         botToken: process.env.SLACK_BOT_TOKEN,
@@ -17,15 +39,9 @@ const config = {
 
         // ── 限ベース設定 ──
         period: {
-            slots: [
-                { label: '1限（9:00〜10:30）', value: '1' },
-                { label: '2限（10:40〜12:10）', value: '2' },
-                { label: '3限（13:00〜14:30）', value: '3' },
-                { label: '4限（14:40〜16:10）', value: '4' },
-                { label: '5限（16:20〜17:50）', value: '5' },
-            ],
+            slots: periodSlots,
             // デフォルトで選択する限（value で指定）
-            defaults: ['1', '2', '3', '4'],
+            defaults: periodDefaults,
         },
 
         // ── 時間ベース設定 ──
