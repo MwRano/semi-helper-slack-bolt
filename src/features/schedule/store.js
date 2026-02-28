@@ -1,38 +1,36 @@
 /**
- * ゼミ日程調整データのインメモリストア
- * TODO: 将来的にはDBに移行する
+ * ゼミ日程調整データのPostgreSQLストア
  */
-const schedules = new Map();
+const { pool } = require('../../db/client');
 
 /**
- * チャンネルごとの設定データ（デフォルト値）のストア
- */
-const channelSettings = new Map();
-
-/**
- * チャンネルごとの設定を保存
- * @param {string} channelId 
- * @param {Object} settings 
- */
-function saveChannelSettings(channelId, settings) {
-    channelSettings.set(channelId, settings);
-}
-
-/**
- * チャンネルごとの設定を取得
- * @param {string} channelId 
+ * DBの行をスケジュールオブジェクト（camelCase）に変換
+ * @param {Object} row
  * @returns {Object|undefined}
  */
-function getChannelSettings(channelId) {
-    return channelSettings.get(channelId);
-}
-
-/**
- * チャンネルごとの設定をクリア（デフォルトに戻す）
- * @param {string} channelId 
- */
-function clearChannelSettings(channelId) {
-    channelSettings.delete(channelId);
+function mapRowToSchedule(row) {
+    if (!row) return undefined;
+    return {
+        id: row.id,
+        creatorId: row.creator_id,
+        creatorName: row.creator_name,
+        channelId: row.channel_id,
+        startDate: row.start_date,
+        endDate: row.end_date,
+        deadline: Number(row.deadline),
+        timeSlots: row.time_slots || [],
+        remindHours: row.remind_hours || [],
+        includeTeacher: row.include_teacher,
+        responses: row.responses || {},
+        resultPosted: row.result_posted,
+        isClosed: row.is_closed,
+        remindedHours: row.reminded_hours || [],
+        overdueRemindedDays: row.overdue_reminded_days || [],
+        threadTs: row.thread_ts,
+        channelMentionTs: row.channel_mention_ts,
+        remindMessages: row.remind_messages || {},
+        createdAt: row.created_at,
+    };
 }
 
 /**
@@ -40,151 +38,229 @@ function clearChannelSettings(channelId) {
  * @param {string} id - スケジュールID
  * @param {Object} data - スケジュールデータ
  */
-function saveSchedule(id, data) {
-    schedules.set(id, {
-        remindHours: [24, 1], // 互換性のためデフォルトを設定
-        ...data,
-        createdAt: new Date().toISOString(),
-        responses: {},
-        resultPosted: false,
-        remindedHours: [],
-    });
+async function saveSchedule(id, data) {
+    await pool.query(
+        `INSERT INTO schedules (
+            id, creator_id, creator_name, channel_id,
+            start_date, end_date, deadline,
+            time_slots, remind_hours, include_teacher,
+            responses, result_posted, is_closed,
+            reminded_hours, overdue_reminded_days, remind_messages,
+            created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW())`,
+        [
+            id,
+            data.creatorId,
+            data.creatorName || null,
+            data.channelId,
+            data.startDate,
+            data.endDate,
+            data.deadline,
+            JSON.stringify(data.timeSlots || []),
+            data.remindHours || [24, 1],
+            data.includeTeacher !== false,
+            JSON.stringify({}),
+            false,
+            false,
+            [],
+            [],
+            JSON.stringify({}),
+        ]
+    );
 }
 
 /**
  * スケジュールを取得
  * @param {string} id
- * @returns {Object|undefined}
+ * @returns {Promise<Object|undefined>}
  */
-function getSchedule(id) {
-    return schedules.get(id);
+async function getSchedule(id) {
+    const result = await pool.query('SELECT * FROM schedules WHERE id = $1', [id]);
+    return mapRowToSchedule(result.rows[0]);
 }
 
 /**
  * メンバーの回答を保存
  * @param {string} scheduleId
  * @param {string} userId
- * @param {Object} responseData - { slots: {...}, note: '' }
+ * @param {Object} responseData - { slots: {...}, note: '', displayName: '' }
  */
-function saveResponse(scheduleId, userId, responseData) {
-    const schedule = schedules.get(scheduleId);
-    if (schedule) {
-        schedule.responses[userId] = {
-            ...responseData,
-            respondedAt: new Date().toISOString(),
-        };
-    }
+async function saveResponse(scheduleId, userId, responseData) {
+    const responseWithTimestamp = {
+        ...responseData,
+        respondedAt: new Date().toISOString(),
+    };
+    await pool.query(
+        `UPDATE schedules
+         SET responses = responses || $1::jsonb
+         WHERE id = $2`,
+        [JSON.stringify({ [userId]: responseWithTimestamp }), scheduleId]
+    );
 }
 
 /**
- * ユニークなスケジュールIDを生成
+ * ユニークなスケジュールIDを生成（同期・DB不要）
  */
 function generateScheduleId() {
     return `sch_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
 /**
- * 全スケジュールを取得
+ * アクティブな（未終了）スケジュールを全て取得し、Map として返す
+ * @returns {Promise<Map<string, Object>>}
  */
-function getAllSchedules() {
-    return schedules;
+async function getAllSchedules() {
+    const result = await pool.query(
+        'SELECT * FROM schedules WHERE result_posted = false AND is_closed = false'
+    );
+    const map = new Map();
+    for (const row of result.rows) {
+        map.set(row.id, mapRowToSchedule(row));
+    }
+    return map;
 }
 
 /**
  * 結果投稿済みフラグをセット
  */
-function markResultPosted(scheduleId) {
-    const schedule = schedules.get(scheduleId);
-    if (schedule) {
-        schedule.resultPosted = true;
-    }
+async function markResultPosted(scheduleId) {
+    await pool.query(
+        'UPDATE schedules SET result_posted = true WHERE id = $1',
+        [scheduleId]
+    );
 }
 
 /**
  * 手動または自動で受付を終了したフラグをセット
  */
-function markAsClosed(scheduleId) {
-    const schedule = schedules.get(scheduleId);
-    if (schedule) {
-        schedule.resultPosted = true; // クーロンなどの処理を行わせないため
-        schedule.isClosed = true;
-    }
+async function markAsClosed(scheduleId) {
+    await pool.query(
+        'UPDATE schedules SET result_posted = true, is_closed = true WHERE id = $1',
+        [scheduleId]
+    );
 }
 
 /**
  * 指定した時間のリマインド済みフラグをセット
  */
-function markRemindedHour(scheduleId, hour) {
-    const schedule = schedules.get(scheduleId);
-    if (schedule && !schedule.remindedHours.includes(hour)) {
-        schedule.remindedHours.push(hour);
-    }
+async function markRemindedHour(scheduleId, hour) {
+    await pool.query(
+        `UPDATE schedules
+         SET reminded_hours = array_append(reminded_hours, $1)
+         WHERE id = $2 AND NOT ($1 = ANY(reminded_hours))`,
+        [hour, scheduleId]
+    );
 }
 
 /**
  * チャンネルのメッセージタイムスタンプ(threadTs)を保存
- * @param {string} id 
- * @param {string} threadTs 
  */
-function updateScheduleThreadTs(id, threadTs) {
-    const schedule = schedules.get(id);
-    if (schedule) {
-        schedule.threadTs = threadTs;
-    }
+async function updateScheduleThreadTs(id, threadTs) {
+    await pool.query(
+        'UPDATE schedules SET thread_ts = $1 WHERE id = $2',
+        [threadTs, id]
+    );
 }
 
 /**
  * チャンネルメンション用メッセージのタイムスタンプを保存
- * @param {string} id 
- * @param {string} ts 
  */
-function saveChannelMentionTs(id, ts) {
-    const schedule = schedules.get(id);
-    if (schedule) {
-        schedule.channelMentionTs = ts;
-    }
+async function saveChannelMentionTs(id, ts) {
+    await pool.query(
+        'UPDATE schedules SET channel_mention_ts = $1 WHERE id = $2',
+        [ts, id]
+    );
 }
 
 /**
  * 締め切り超過後のリマインド済み日数をセット
- * @param {string} scheduleId 
- * @param {number} day 
  */
-function markOverdueRemindedDay(scheduleId, day) {
-    const schedule = schedules.get(scheduleId);
-    if (schedule) {
-        if (!schedule.overdueRemindedDays) {
-            schedule.overdueRemindedDays = [];
-        }
-        if (!schedule.overdueRemindedDays.includes(day)) {
-            schedule.overdueRemindedDays.push(day);
-        }
-    }
+async function markOverdueRemindedDay(scheduleId, day) {
+    await pool.query(
+        `UPDATE schedules
+         SET overdue_reminded_days = array_append(overdue_reminded_days, $1)
+         WHERE id = $2 AND NOT ($1 = ANY(overdue_reminded_days))`,
+        [day, scheduleId]
+    );
 }
 
 /**
  * リマインドメッセージのタイムスタンプを保存（あとで削除するため）
  */
-function addRemindMessage(scheduleId, userId, channel, ts) {
-    const schedule = schedules.get(scheduleId);
-    if (schedule) {
-        if (!schedule.remindMessages) schedule.remindMessages = {};
-        if (!schedule.remindMessages[userId]) schedule.remindMessages[userId] = [];
-        schedule.remindMessages[userId].push({ channel, ts });
+async function addRemindMessage(scheduleId, userId, channel, ts) {
+    await pool.query(
+        `UPDATE schedules
+         SET remind_messages = jsonb_set(
+             remind_messages,
+             ARRAY[$1],
+             COALESCE(remind_messages->$1, '[]'::jsonb) || $2::jsonb,
+             true
+         )
+         WHERE id = $3`,
+        [userId, JSON.stringify([{ channel, ts }]), scheduleId]
+    );
+}
+
+/**
+ * 送信済みのリマインドメッセージ一覧を取得し、リストからクリアする（トランザクション）
+ */
+async function popRemindMessages(scheduleId, userId) {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const selectResult = await client.query(
+            'SELECT remind_messages->$1 AS msgs FROM schedules WHERE id = $2',
+            [userId, scheduleId]
+        );
+        const msgs = selectResult.rows[0]?.msgs || [];
+        await client.query(
+            'UPDATE schedules SET remind_messages = remind_messages - $1 WHERE id = $2',
+            [userId, scheduleId]
+        );
+        await client.query('COMMIT');
+        return msgs;
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
     }
 }
 
 /**
- * 送信済みのリマインドメッセージ一覧を取得し、リストからクリアする
+ * チャンネルごとの設定を保存
  */
-function popRemindMessages(scheduleId, userId) {
-    const schedule = schedules.get(scheduleId);
-    if (schedule && schedule.remindMessages && schedule.remindMessages[userId]) {
-        const msgs = schedule.remindMessages[userId];
-        delete schedule.remindMessages[userId];
-        return msgs;
-    }
-    return [];
+async function saveChannelSettings(channelId, settings) {
+    await pool.query(
+        `INSERT INTO channel_settings (channel_id, settings, updated_at)
+         VALUES ($1, $2, NOW())
+         ON CONFLICT (channel_id) DO UPDATE
+         SET settings = $2, updated_at = NOW()`,
+        [channelId, JSON.stringify(settings)]
+    );
+}
+
+/**
+ * チャンネルごとの設定を取得
+ * @param {string} channelId
+ * @returns {Promise<Object|null>}
+ */
+async function getChannelSettings(channelId) {
+    const result = await pool.query(
+        'SELECT settings FROM channel_settings WHERE channel_id = $1',
+        [channelId]
+    );
+    return result.rows[0]?.settings || null;
+}
+
+/**
+ * チャンネルごとの設定をクリア（デフォルトに戻す）
+ */
+async function clearChannelSettings(channelId) {
+    await pool.query(
+        'DELETE FROM channel_settings WHERE channel_id = $1',
+        [channelId]
+    );
 }
 
 module.exports = {

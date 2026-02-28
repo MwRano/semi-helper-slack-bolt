@@ -36,7 +36,7 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
         const shouldResetDefault = saveDefaultOptions.some(opt => opt.value === 'reset_default');
 
         if (shouldResetDefault) {
-            clearChannelSettings(channel);
+            await clearChannelSettings(channel);
             logger.info(`🧹 チャンネル(${channel})のデフォルト設定をリセットしました。`);
         } else if (shouldSaveDefault) {
             // 現在日時からの差分を計算してデフォルト値として保存
@@ -50,7 +50,7 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
             const endOffsetDays = Math.round((endParsed.getTime() - todayParsed.getTime()) / (1000 * 60 * 60 * 24));
             const deadLineOffsetHours = Math.round((deadline * 1000 - Date.now()) / (1000 * 60 * 60));
 
-            saveChannelSettings(channel, {
+            await saveChannelSettings(channel, {
                 mode: selectedMode,
                 timeSlots: timeSlots.map(opt => opt.value),
                 remindHours: remindHours.map(String),
@@ -88,7 +88,7 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
 
         // スケジュールデータを保存
         const scheduleId = generateScheduleId();
-        saveSchedule(scheduleId, {
+        await saveSchedule(scheduleId, {
             creatorId: userId,
             creatorName: creatorName, // 名前も保存しておく
             channelId: channel,
@@ -110,7 +110,7 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
         logger.info('========================================');
 
         // 同じチャンネルにある未完了の過去のゼミ日程調整フォームを強制終了する
-        const allSchedules = getAllSchedules();
+        const allSchedules = await getAllSchedules();
         for (const [oldId, oldSchedule] of allSchedules.entries()) {
             if (oldId !== scheduleId && oldSchedule.channelId === channel && !oldSchedule.resultPosted && !oldSchedule.isClosed) {
                 if (oldSchedule.threadTs) {
@@ -163,7 +163,7 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
                         logger.error(`古いゼミ日程調整のメッセージ更新に失敗しました (${oldId}):`, updateErr);
                     }
                 }
-                markAsClosed(oldId);
+                await markAsClosed(oldId);
             }
         }
 
@@ -211,12 +211,12 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
 
         // スレッドのtsを保存
         if (result.ts) {
-            updateScheduleThreadTs(scheduleId, result.ts);
+            await updateScheduleThreadTs(scheduleId, result.ts);
         }
 
         // チャンネルメンション用メッセージのtsも保存（あとで削除するため）
         if (channelMentionMsg.ts) {
-            saveChannelMentionTs(scheduleId, channelMentionMsg.ts);
+            await saveChannelMentionTs(scheduleId, channelMentionMsg.ts);
         }
 
         // 元のボタンメッセージを更新（無効化）

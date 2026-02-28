@@ -12,7 +12,7 @@ const messageHandler = async ({ message, say, logger }) => {
         logger.info(`  チャンネル: ${message.channel}`);
         logger.info('========================================');
 
-        const settings = getChannelSettings(message.channel);
+        const settings = await getChannelSettings(message.channel);
         let defaultText = 'デフォルト: 来週月〜金 / 1〜4限 / 締切2日後 / 通知24h・1h前 / 先生の予定考慮';
 
         if (settings) {

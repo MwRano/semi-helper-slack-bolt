@@ -28,6 +28,9 @@ const config = {
         signingSecret: process.env.SLACK_SIGNING_SECRET,
         appToken: process.env.SLACK_APP_TOKEN,
     },
+    database: {
+        url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/schedule_bot',
+    },
     port: process.env.PORT || 3000,
 
     /**
