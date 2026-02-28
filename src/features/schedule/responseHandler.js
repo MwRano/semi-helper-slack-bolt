@@ -37,10 +37,10 @@ const responseHandler = async ({ ack, body, view, client, logger }) => {
         }
 
         // 保存
-        saveResponse(scheduleId, userId, { slots, note, displayName });
+        await saveResponse(scheduleId, userId, { slots, note, displayName });
 
         // --- ユーザーに送られたリマインド用DMを削除 ---
-        const msgsToDelete = popRemindMessages(scheduleId, userId);
+        const msgsToDelete = await popRemindMessages(scheduleId, userId);
         if (msgsToDelete.length > 0) {
             for (const msg of msgsToDelete) {
                 try {
@@ -54,7 +54,7 @@ const responseHandler = async ({ ack, body, view, client, logger }) => {
             }
         }
 
-        const schedule = getSchedule(scheduleId);
+        const schedule = await getSchedule(scheduleId);
 
         // ◯ △ ✕ のカウント
         const counts = { available: 0, maybe: 0, unavailable: 0 };
@@ -111,7 +111,7 @@ const responseHandler = async ({ ack, body, view, client, logger }) => {
                         const busySlots = schedule.includeTeacher !== false
                             ? await getBusySlots(schedule.startDate, schedule.endDate, schedule.timeSlots)
                             : {};
-                        const { pdfBuffer, notes } = generatePDF(scheduleId, busySlots);
+                        const { pdfBuffer, notes } = generatePDF(schedule, busySlots);
 
                         let initialComment = `<@${schedule.creatorId}> 対象メンバー全員（${members.length}名）の回答が完了しました！\nこちらのPDFで結果一覧の表をご確認いただけます。`;
                         if (notes && notes.length > 0) {
@@ -143,7 +143,7 @@ const responseHandler = async ({ ack, body, view, client, logger }) => {
                         logger.error('ファイルのアップロード（回答完了通知）に失敗しました:', notifyErr);
                     }
 
-                    markResultPosted(scheduleId);
+                    await markResultPosted(scheduleId);
 
                     // スレッドの親メッセージ（フォーム）を更新してボタンを消す
                     try {

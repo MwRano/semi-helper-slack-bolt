@@ -43,8 +43,8 @@ function getWeekdaysBetween(startDateStr, endDateStr) {
  * @param {string} scheduleId - スケジュールID
  * @returns {Object|null} Block Kit の view オブジェクト
  */
-function buildResponseModalView(scheduleId) {
-    const schedule = getSchedule(scheduleId);
+async function buildResponseModalView(scheduleId) {
+    const schedule = await getSchedule(scheduleId);
     if (!schedule) return null;
 
     const { startDate, endDate, timeSlots } = schedule;

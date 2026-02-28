@@ -1,4 +1,3 @@
-const { getSchedule } = require('./store');
 const { jsPDF } = require("jspdf");
 const autoTable = require("jspdf-autotable").default || require("jspdf-autotable");
 
@@ -44,9 +43,10 @@ function getShortLabel(slotText) {
 
 /**
  * 結果をPDFのBufferとして取得
+ * @param {Object} schedule - スケジュールオブジェクト
+ * @param {Object} busySlots - 先生の予定
  */
-function generatePDF(scheduleId, busySlots = {}) {
-    const schedule = getSchedule(scheduleId);
+function generatePDF(schedule, busySlots = {}) {
     if (!schedule) return null;
 
     const { startDate, endDate, timeSlots, responses } = schedule;

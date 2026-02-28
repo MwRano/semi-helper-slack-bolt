@@ -13,7 +13,7 @@ function startDeadlineChecker(app) {
 
     setInterval(async () => {
         const now = Math.floor(Date.now() / 1000); // Unix timestamp
-        const schedules = getAllSchedules();
+        const schedules = await getAllSchedules();
 
         for (const [scheduleId, schedule] of schedules) {
             // ----- 1. リマインド処理 -----
@@ -52,13 +52,13 @@ function startDeadlineChecker(app) {
                                         channel: userId,
                                         text: `🔔 *リマインド*\n<@${userId}>\n締め切りまで残り約${hour}時間となりました。\n<${permalink}|こちらのメッセージ>から日程のご回答をお願いします！`,
                                     });
-                                    addRemindMessage(scheduleId, userId, res.channel, res.ts);
+                                    await addRemindMessage(scheduleId, userId, res.channel, res.ts);
                                 }
                                 app.logger.info(`🔔 リマインドを送信しました: ${scheduleId} (${hour}時間前, ${unrespondedMembers.length}名へ)`);
                             }
 
                             // 人数にかかわらず、フラグを立てて二重送信を防ぐ
-                            markRemindedHour(scheduleId, hour);
+                            await markRemindedHour(scheduleId, hour);
                         } catch (error) {
                             app.logger.error(`リマインド処理に失敗しました (${scheduleId}):`, error);
                         }
@@ -101,13 +101,13 @@ function startDeadlineChecker(app) {
                                         channel: userId,
                                         text: textMessage,
                                     });
-                                    addRemindMessage(scheduleId, userId, res.channel, res.ts);
+                                    await addRemindMessage(scheduleId, userId, res.channel, res.ts);
                                 }
                                 app.logger.info(`⚠️ 超過リマインドを送信しました: ${scheduleId} (${overdueDays}日経過, ${unrespondedMembers.length}名へ)`);
                             }
 
                             // 未回答がいなくても経過日数フラグは立ててスキップする
-                            markOverdueRemindedDay(scheduleId, overdueDays);
+                            await markOverdueRemindedDay(scheduleId, overdueDays);
                         } catch (error) {
                             app.logger.error(`超過リマインド処理に失敗しました (${scheduleId}):`, error);
                         }

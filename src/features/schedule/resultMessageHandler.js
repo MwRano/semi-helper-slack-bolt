@@ -9,7 +9,7 @@ const { getBusySlots } = require('./googleCalendarService');
 const resultMessageHandler = async ({ message, say, client, logger }) => {
     try {
         const channel = message.channel;
-        const allSchedules = getAllSchedules();
+        const allSchedules = await getAllSchedules();
         let activeScheduleId = null;
         let activeSchedule = null;
 
@@ -43,7 +43,7 @@ const resultMessageHandler = async ({ message, say, client, logger }) => {
         }
 
         // PDF生成
-        const { pdfBuffer, notes } = generatePDF(activeScheduleId, busySlots);
+        const { pdfBuffer, notes } = generatePDF(activeSchedule, busySlots);
 
         // 現在の回答者数を計算
         const respondedCount = Object.keys(activeSchedule.responses || {}).length;

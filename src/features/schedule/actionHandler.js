@@ -14,7 +14,7 @@ const openModalAction = async ({ ack, body, client, logger }) => {
         const channelId = body.channel.id;
         const messageTs = body.message?.ts;
 
-        const savedSettings = getChannelSettings(channelId) || {};
+        const savedSettings = await getChannelSettings(channelId) || {};
         const initialMode = savedSettings.mode || config.timeSlot.mode || 'period';
 
         await client.views.open({
@@ -106,7 +106,7 @@ const openResponseModalAction = async ({ ack, body, client, logger }) => {
 
     try {
         const scheduleId = body.actions[0].value;
-        const view = buildResponseModalView(scheduleId);
+        const view = await buildResponseModalView(scheduleId);
 
         if (!view) {
             logger.error(`スケジュールが見つかりません: ${scheduleId}`);

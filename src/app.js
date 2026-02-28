@@ -2,6 +2,7 @@ const { App } = require('@slack/bolt');
 const { config } = require('./config');
 const { registerFeatures } = require('./features');
 const { startHealthCheckServer } = require('./utils/healthCheck');
+const { runMigrations } = require('./db/migrate');
 
 const app = new App({
     token: config.slack.botToken,
@@ -17,6 +18,7 @@ registerFeatures(app);
 // アプリ起動
 (async () => {
     try {
+        await runMigrations();
         await app.start();
         app.logger.info('⚡️ Bolt app is running!');
 
