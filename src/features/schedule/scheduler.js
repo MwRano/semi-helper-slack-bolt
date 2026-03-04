@@ -2,14 +2,14 @@ const { getAllSchedules, markResultPosted, markRemindedHour, markOverdueReminded
 const { buildResultBlocks } = require('./resultViews');
 const { getBusySlots } = require('./googleCalendarService');
 
-const CHECK_INTERVAL_MS = 60 * 1000; // 1分ごとにチェック
+const CHECK_INTERVAL_MS = 60 * 60 * 1.5 * 1000; // 1.5時間ごとにチェック
 
 /**
  * 締め切りチェックを開始する
  * @param {import('@slack/bolt').App} app
  */
 function startDeadlineChecker(app) {
-    app.logger.info('⏰ 締め切りチェッカーを開始しました（1分間隔）');
+    app.logger.info('⏰ 締め切りチェッカーを開始しました（1.5時間間隔）');
 
     setInterval(async () => {
         const now = Math.floor(Date.now() / 1000); // Unix timestamp
