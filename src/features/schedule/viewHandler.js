@@ -1,4 +1,6 @@
 const { saveSchedule, generateScheduleId, updateScheduleThreadTs, saveChannelMentionTs, getAllSchedules, markAsClosed, saveChannelSettings, clearChannelSettings } = require('./store');
+const { scheduleRemindersFor } = require('./scheduler');
+
 
 /**
  * ゼミ日程調整モーダル送信時のハンドラー
@@ -108,6 +110,12 @@ const viewHandler = async ({ ack, body, view, client, logger }) => {
         logger.info(`  締め切り: ${deadlineText}`);
         logger.info(`  時間枠: ${timeSlots.map((o) => o.text.text).join(', ')}`);
         logger.info('========================================');
+
+        // メモリ上のリマインドタイマーをセットする
+        const fakeApp = { client, logger };
+        scheduleRemindersFor(fakeApp, scheduleId).catch((err) => {
+            logger.error('リマインドタイマーのセット中にエラーが発生しました:', err);
+        });
 
         // 同じチャンネルにある未完了の過去のゼミ日程調整フォームを強制終了する
         const allSchedules = await getAllSchedules();
