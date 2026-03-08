@@ -1,5 +1,6 @@
 const { messageHandler } = require('./messageHandler');
 const { resultMessageHandler } = require('./resultMessageHandler');
+const { closeMessageHandler } = require('./closeMessageHandler');
 const { openModalAction, switchModeAction, clearTimeSlotsAction, openResponseModalAction } = require('./actionHandler');
 const { viewHandler } = require('./viewHandler');
 const { responseHandler } = require('./responseHandler');
@@ -15,6 +16,9 @@ function registerScheduleFeature(app) {
 
     // 「けっか」メッセージ → 途中結果を投稿する
     app.message('けっか', resultMessageHandler);
+
+    // 「しめきり」メッセージ → 最終結果を投稿して受付を終了する
+    app.message('しめきり', closeMessageHandler);
 
     // ボタンクリック → 作成モーダルを表示
     app.action('open_schedule_modal', openModalAction);
