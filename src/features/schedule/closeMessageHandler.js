@@ -67,6 +67,48 @@ const closeMessageHandler = async ({ message, say, client, logger }) => {
         await markAsClosed(activeScheduleId);
         logger.info(`🔒 スケジュール ${activeScheduleId} を締め切りました`);
 
+        // 「📝 日程を入力する」ボタンが残らないよう、スレッド親メッセージをボタンなしに更新する
+        if (activeSchedule.threadTs) {
+            try {
+                const deadlineDate = new Date(activeSchedule.deadline * 1000);
+                const deadlineText = deadlineDate.toLocaleString('ja-JP', {
+                    year: 'numeric', month: '2-digit', day: '2-digit',
+                    hour: '2-digit', minute: '2-digit',
+                });
+
+                await client.chat.update({
+                    channel: channel,
+                    ts: activeSchedule.threadTs,
+                    blocks: [
+                        {
+                            type: 'header',
+                            text: { type: 'plain_text', text: '📅 ゼミ日程調整' },
+                        },
+                        {
+                            type: 'section',
+                            text: {
+                                type: 'mrkdwn',
+                                text: `*作成者:* ${activeSchedule.creatorName || '<@' + activeSchedule.creatorId + '>'}　|　*締め切り:* ${deadlineText}`,
+                            },
+                        },
+                        {
+                            type: 'context',
+                            elements: [
+                                {
+                                    type: 'mrkdwn',
+                                    text: `🔒 <@${message.user}> によって日程調整が締め切られました。新規の回答受付は終了しています。`,
+                                },
+                            ],
+                        },
+                    ],
+                    text: '📅 ゼミ日程調整の受付が終了しました',
+                });
+                logger.info(`🔒 スレッドのボタンを受付終了表示に更新しました`);
+            } catch (updateErr) {
+                logger.warn('スレッドメッセージの更新に失敗しました:', updateErr);
+            }
+        }
+
         // ユーザーが「しめきり」と打った場所と、PDFの投稿先スレッドが違う場合は返信する
         if (activeSchedule.threadTs && message.ts !== activeSchedule.threadTs) {
             let threadUrl = '';
