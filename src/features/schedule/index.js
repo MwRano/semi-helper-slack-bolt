@@ -18,7 +18,7 @@ function registerScheduleFeature(app) {
     app.message('けっか', resultMessageHandler);
 
     // 「しめきり」メッセージ → 最終結果を投稿して受付を終了する
-    app.message('しめきり', closeMessageHandler);
+    app.message('しめきる', closeMessageHandler);
 
     // ボタンクリック → 作成モーダルを表示
     app.action('open_schedule_modal', openModalAction);
